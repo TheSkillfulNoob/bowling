@@ -41,7 +41,8 @@ def update_data_to_gsheet(date_str, location_str, games):
     st.success(f"✅ Session for {date_parsed} at {location_str} added/replaced.")
 
 # === Streamlit UI ===
-st.title("🎳 Bowling Dashboard")
+st.set_page_config(page_title="Andrew's Bowling Dashboard")
+st.title("🎳 Andrew's Bowling Dashboard")
 
 st.sidebar.header("➕ Add New Game Session")
 with st.sidebar.form("entry_form", clear_on_submit=False):
@@ -129,8 +130,7 @@ if len(filtered) >= 5:
     tab_ts, tab_scoredist, tab_dotplot, tab_regression = st.tabs(["📈 Time Series & Stats", "🎯 Score Distribution", "📊 Dot Plots", "📜 Reg. Summary"])
 
     with tab_ts:
-        st.subheader("📊 Key Statistics")
-
+        st.subheader("🎯 Key Statistics")
         last_5_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(5)
         last_10_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(10)
 
@@ -167,8 +167,13 @@ if len(filtered) >= 5:
             st.markdown("**Personal Best**")
             st.dataframe(final_max)
 
-        st.markdown("🟢⬆️ = 5MA > 10MA by >3%; 🔴⬇️ = 5MA < 10MA by >3%")
+        st.markdown("🟢⬆️ = 5MA > 10MA by more than 3%; 🔴⬇️ = 5MA < 10MA by more than 3%")
 
+        st.markdown("### 🧾 Score Summary")
+        desc = filtered['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
+        st.dataframe(pd.DataFrame(desc.rename({"min":"Min", "25%":"Q1", "50%":"Median", "75%":"Q3", "max":"Max"})).T)
+        
+    with tab_scoredist:
         st.subheader("📈 Time Series Trends")
         avg_by_date = filtered.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
         col1, col2 = st.columns(2)
@@ -188,11 +193,8 @@ if len(filtered) >= 5:
             ax2.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
             ax2.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
             st.pyplot(fig2)
-
-    with tab_scoredist:
-        st.markdown("### 🧾 Score Summary")
-        desc = filtered['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
-        st.dataframe(pd.DataFrame(desc.rename({"min":"Min", "25%":"Q1", "50%":"Median", "75%":"Q3", "max":"Max"})).T)
+        
+        st.subheader("📊 Histogram and Normal Density Plot")
         col1, col2 = st.columns(2)
         with col1:
             fig, mu, sigma = plot_hist_with_normal(filtered["Total"])
