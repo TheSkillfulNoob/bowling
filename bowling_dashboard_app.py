@@ -7,7 +7,6 @@ import statsmodels.api as sm
 from gspread_dataframe import set_with_dataframe
 from datetime import datetime
 import json
-from annotated_text import annotated_text
 
 # Connect to Google Sheet
 def connect_to_sheet():
