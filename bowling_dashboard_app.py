@@ -57,7 +57,7 @@ with st.sidebar.form("entry_form", clear_on_submit=False):
     ]
     if st.form_submit_button("Add to Database"):
         update_data_to_gsheet(date_input, location_input, games_input)
-
+        
 # === Load Data and Apply Filters ===
 df = load_data_from_gsheet()
 start_date_default, end_date_default = df['Date'].min(), df['Date'].max()
@@ -191,29 +191,29 @@ if len(filtered) >= 5:
 
     with tab_scoredist:
         st.markdown("### 🧾 Score Summary")
-        desc = df['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
+        desc = filtered['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
         st.dataframe(pd.DataFrame(desc.rename({"min":"Min", "25%":"Q1", "50%":"Median", "75%":"Q3", "max":"Max"})).T)
         col1, col2 = st.columns(2)
         with col1:
-            fig, mu, sigma = plot_hist_with_normal(df["Total"])
+            fig, mu, sigma = plot_hist_with_normal(filtered["Total"])
             st.pyplot(fig)
         with col2:
             fig_kde, ax = plt.subplots()
-            sns.kdeplot(df["Total"], fill=True, ax=ax, color="purple")
+            sns.kdeplot(filtered["Total"], fill=True, ax=ax, color="purple")
             ax.set_title("KDE of Total Scores")
             st.pyplot(fig_kde)
 
     with tab_dotplot:
         for metric, color in zip(["Strike", "Bonus", "Pins"], ["blue", "green", "pink"]):
             col1, col2 = st.columns(2)
-            x = df["Strike"] + df["Spare"] if metric == "Bonus" else df[metric]
-            fig1, fig2 = plot_residuals_with_fit(x, df["Total"], metric, color)
+            x = filtered["Strike"] + filtered["Spare"] if metric == "Bonus" else filtered[metric]
+            fig1, fig2 = plot_residuals_with_fit(x, filtered["Total"], metric, color)
             with col1: st.pyplot(fig1)
             with col2: st.pyplot(fig2)
 
     with tab_regression:
-        X = sm.add_constant(df[["Spare", "Strike", "Pins"]])
-        y = df["Total"]
+        X = sm.add_constant(filtered[["Spare", "Strike", "Pins"]])
+        y = filtered["Total"]
         model = sm.OLS(y, X).fit()
         st.text(model.summary())
 
