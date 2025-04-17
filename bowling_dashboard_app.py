@@ -129,7 +129,7 @@ with col1:
     st.dataframe(final_overall.to_frame())
 with col2:
     st.markdown("**Personal Best**")
-    st.dataframe(final_max.to_frame())
+    st.dataframe(final_max)
 with col3:
     st.markdown("**Moving Average (5 Dates)**")
     st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
