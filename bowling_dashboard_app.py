@@ -85,7 +85,7 @@ else:
 
 # Statistics
 st.subheader("📊 Statistics")
-col1, col2, col3 = st.columns(3)
+col1, col2, col3 = st.columns([3, 4, 5])
 
 def format_avg(series):
     return pd.Series({
@@ -111,7 +111,7 @@ overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_5d = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_10d = df[df['Date'].isin(last_10_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 
-final_overall = format_avg(overall).rename(f"Overall ({df.shape[0]} games)")
+final_overall = format_avg(overall).rename(f"{df.shape[0]} games")
 # Theoretical maximums for each stat
 theoretical_max = {
     "Spare": 10,
@@ -146,11 +146,11 @@ with col1:
     st.markdown("**Overall: Average**")
     st.dataframe(final_overall.to_frame())
 with col2:
-    st.markdown("**Personal Best**")
-    st.dataframe(final_max)
-with col3:
     st.markdown("**Moving Average (5 Dates)**")
     st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
+with col3:
+    st.markdown("**Personal Best**")
+    st.dataframe(final_max)
 
 st.markdown("🟢⬆️ is printed if 5MA is more than 3\% above 10MA; 🔴⬇️ for more than 3\% less.")
 
