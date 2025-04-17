@@ -151,9 +151,9 @@ def format_avg(series):
 def comparison_emoji(base_val, compare_val):
     if pd.notna(base_val) and pd.notna(compare_val):
         ratio = (compare_val - base_val) / base_val
-        if ratio > 0.02:
+        if ratio > 0.05:
             return " 🟢⬆️"
-        elif ratio < -0.02:
+        elif ratio < -0.05:
             return " 🔴⬇️"
     return ""
 
@@ -162,11 +162,13 @@ last_20 = filtered.tail(20)
 last_5_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(5)
 last_2_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(2)
 
+overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_50 = last_50[['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_20 = last_20[['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_5d = filtered[filtered['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_2d = filtered[filtered['Date'].isin(last_2_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 
+final_overall = format_avg(overall).rename("Overall")
 final_avg_50 = format_avg(avg_50).rename("Last 50 Games")
 final_avg_5d = format_avg(avg_5d).rename("Last 5 Dates")
 
@@ -174,9 +176,12 @@ emojis_50 = [comparison_emoji(avg_50[x], avg_20[x]) for x in avg_50.index]
 emojis_5d = [comparison_emoji(avg_5d[x], avg_2d[x]) for x in avg_5d.index]
 
 with col1:
+    st.markdown("**Overall**")
+    st.dataframe(overall.to_frame())
+with col2:
     st.markdown("**Last 50 Games**")
     st.dataframe(final_avg_50.to_frame().assign(Trend=emojis_50))
-with col2:
+with col3:
     st.markdown("**Last 5 Dates**")
     st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
 
