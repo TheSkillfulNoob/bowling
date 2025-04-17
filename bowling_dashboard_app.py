@@ -11,17 +11,24 @@ CSV_FILE = "past_games.csv"
 @st.cache_data
 def load_data():
     df = pd.read_csv(CSV_FILE)
-    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True)
-    df = df.sort_values(by=['Date', 'Game'])
+
+    # Parse mixed date formats safely and convert to datetime.date
+    df['Date'] = pd.to_datetime(df['Date'], format='mixed', dayfirst=True, errors='coerce')
+    df = df.dropna(subset=['Date'])  # Remove any unparseable dates
+    df['Date'] = df['Date'].dt.date  # Standardize to date only (drop time)
+    
+    df = df.sort_values(by=['Date', 'Game']).reset_index(drop=True)
     return df
 
 # Update the CSV with new game entries
 def update_data(date_str, location_str, games):
     try:
-        date_parsed = pd.to_datetime(date_str, dayfirst=True)
-    except:
-        st.error("Invalid date format. Use DD/MM/YYYY.")
+        date_parsed = pd.to_datetime(date_str, dayfirst=True).date()
+    except Exception as e:
+        st.error(f"Invalid date format. Use DD/MM/YYYY. Details: {e}")
         return
+
+    # Create new game entries
     new_rows = []
     for i, g in enumerate(games, 1):
         spare, strike, pins, total = g
@@ -34,17 +41,20 @@ def update_data(date_str, location_str, games):
             'Pins': pins,
             'Total': total
         })
-    new_df = pd.DataFrame(new_rows)
+
+    # Load existing data
     existing = pd.read_csv(CSV_FILE)
+    existing['Date'] = pd.to_datetime(existing['Date'], format='mixed', dayfirst=True, errors='coerce').dt.date
 
-    # Remove previous sessions with same date & location
-    existing = existing[~((existing['Date'] == date_parsed.strftime('%Y-%m-%d')) & 
-                        (existing['Location'].str.lower() == location_str.lower()))]
+    # Remove any prior session on the same date and location (case-insensitive)
+    existing = existing[~((existing['Date'] == date_parsed) & 
+                          (existing['Location'].str.lower() == location_str.lower()))]
 
-    # Append and save
-    combined = pd.concat([existing, new_df], ignore_index=True)
+    # Append new session
+    combined = pd.concat([existing, pd.DataFrame(new_rows)], ignore_index=True)
     combined.to_csv(CSV_FILE, index=False)
-    st.success("Session added (previous data at same date/location was overwritten).")
+
+    st.success(f"✅ Added new session for {date_parsed} at {location_str} (replacing previous if existed).")
 
 # ---- Streamlit UI ----
 st.title("🎳 Bowling Stats Dashboard")
