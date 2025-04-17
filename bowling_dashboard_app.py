@@ -140,8 +140,13 @@ if location != "All":
 st.subheader("📊 Averages")
 col1, col2, col3 = st.columns(3)
 
-def format_avg(df):
-    return df.round({"Spare": 3, "Strike": 3, "Pins": 2, "Total": 2})
+def format_avg(series):
+    return pd.Series({
+        "Spare": round(series.get("Spare", 0), 3),
+        "Strike": round(series.get("Strike", 0), 3),
+        "Pins": round(series.get("Pins", 0), 2),
+        "Total": round(series.get("Total", 0), 2)
+    })
 
 def comparison_emoji(base_val, compare_val):
     if pd.notna(base_val) and pd.notna(compare_val):
