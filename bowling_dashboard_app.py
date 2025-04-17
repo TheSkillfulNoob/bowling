@@ -88,7 +88,7 @@ else:
 
 # Statistics
 st.subheader("📊 Statistics")
-col1, col2, col3 = st.columns([4, 7, 7])
+col1, col2, col3 = st.columns([5, 5, 7])
 
 def format_avg(series):
     return pd.Series({
@@ -114,7 +114,7 @@ overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_5d = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_10d = df[df['Date'].isin(last_10_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 
-final_overall = format_avg(overall).rename(f"{df.shape[0]} games")
+final_overall = format_avg(overall).rename(f"n = {df.shape[0]} games")
 # Theoretical maximums for each stat
 theoretical_max = {
     "Spare": 10,
@@ -195,84 +195,70 @@ with col2:
 
 # Analysis
 st.subheader("📉 Analysis")
+def plot_residuals_with_fit(x, y, xlabel, color):
+    coeffs = np.polyfit(x, y, 1)
+    reg_line = np.poly1d(coeffs)
+    residuals = y - reg_line(x)
+
+    # Dot plot
+    fig1, ax1 = plt.subplots()
+    ax1.scatter(x, y, alpha=0.6, color=color)
+    ax1.plot(np.sort(x), reg_line(np.sort(x)), color="black", linestyle="--")
+
+    # Annotate regression equation
+    slope, intercept = coeffs
+    eqn_text = f"y = {slope:.2f}x + {intercept:.2f}"
+    ax1.text(0.05, 0.95, eqn_text, transform=ax1.transAxes, fontsize=9,
+             verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray"))
+
+    ax1.set_title(f"Total Score vs. {xlabel}")
+    ax1.set_xlabel(xlabel)
+    ax1.set_ylabel("Total Score")
+
+    # Residual plot
+    fig2, ax2 = plt.subplots()
+    ax2.scatter(x, residuals, alpha=0.6, color="gray")
+    ax2.axhline(0, linestyle="--", color="black")
+    ax2.set_title(f"Residuals vs. {xlabel}")
+    ax2.set_xlabel(xlabel)
+    ax2.set_ylabel("Residuals")
+
+    return fig1, fig2
+
+def plot_hist_with_normal(y):
+    mu, sigma = np.mean(y), np.std(y)
+    fig, ax1 = plt.subplots()
+
+    # Histogram (frequency)
+    counts, bins, _ = ax1.hist(y, bins=15, color="skyblue", edgecolor="black", alpha=0.7)
+    ax1.set_ylabel("Frequency")
+    ax1.set_xlabel("Total Score")
+    ax1.set_title("Histogram with Normal Fit")
+
+    # Density curve on secondary axis
+    ax2 = ax1.twinx()
+    density_vals = stats.norm.pdf(bins, mu, sigma)
+    ax2.plot(bins, density_vals, 'k--', linewidth=2, label=f"N({mu:.1f}, {sigma:.2f}²)", color="black")
+    ax2.set_ylabel("Density")
+    ax2.legend(loc="upper right")
+
+    return fig, mu, sigma
+
 if len(filtered) >= 5:
     X = filtered[['Spare', 'Strike', 'Pins']]
     X = sm.add_constant(X)
     y = filtered['Total']
     model = sm.OLS(y, X).fit()
 
-    tab1, tab2, tab3, tab4 = st.tabs(["📜 Reg. Summary", "📈 Reg. Coefficients", "📊 Dot Plots", "🎯 Score Distribution"])
-
+    tab1, tab2, tab3, tab4 = st.tabs(["🎯 Score Distribution", "📊 Dot Plots", "📜 Reg. Summary", "📈 Reg. Coefficients"])
     with tab1:
-        st.text(model.summary())
-
-    with tab2:
-        st.dataframe(model.params.rename("Coefficient").to_frame())
-
-    # Helper function for scatter plots
-    # For regression line with residual plot
-    def plot_residuals_with_fit(x, y, xlabel, color):
-        coeffs = np.polyfit(x, y, 1)
-        reg_line = np.poly1d(coeffs)
-        residuals = y - reg_line(x)
-
-        # Dot plot
-        fig1, ax1 = plt.subplots()
-        ax1.scatter(x, y, alpha=0.6, color=color)
-        ax1.plot(np.sort(x), reg_line(np.sort(x)), color="black", linestyle="--")
-        ax1.set_title(f"Total Score vs. {xlabel}")
-        ax1.set_xlabel(xlabel)
-        ax1.set_ylabel("Total Score")
-
-        # Residual plot
-        fig2, ax2 = plt.subplots()
-        ax2.scatter(x, residuals, alpha=0.6, color="gray")
-        ax2.axhline(0, linestyle="--", color="black")
-        ax2.set_title(f"Residuals vs. {xlabel}")
-        ax2.set_xlabel(xlabel)
-        ax2.set_ylabel("Residuals")
-
-        return fig1, fig2
-
-    with tab3:
-        for metric, color in zip(["Strike", "Bonus", "Pins"], ["blue", "green", "pink"]):
-            col1, col2 = st.columns(2)
-            x_vals = filtered["Strike"] + filtered["Spare"] if metric == "Bonus" else filtered[metric]
-            fig1, fig2 = plot_residuals_with_fit(x_vals, filtered["Total"], metric, color)
-            with col1:
-                st.pyplot(fig1)
-            with col2:
-                st.pyplot(fig2)
-
-    with tab4:
         st.markdown("### 🎯 Distribution of Total Scores")
-
-        def plot_hist_with_normal(y):
-            mu, sigma = np.mean(y), np.std(y)
-            fig, ax = plt.subplots()
-            count, bins, ignored = ax.hist(y, bins=15, color="skyblue", edgecolor="black", alpha=0.7, density=True)
-
-            # Normal curve
-            norm_vals = stats.norm.pdf(bins, mu, sigma)
-            ax.plot(bins, norm_vals, 'k--', linewidth=2, label=f"N({mu:.1f}, {sigma**2:.1f})")
-            ax.legend()
-            ax.set_title("Histogram with Normal Fit")
-            ax.set_xlabel("Total Score")
-            ax.set_ylabel("Density")
-            return fig, mu, sigma
-
         # Summary stats
-        score_summary = filtered["Total"].describe()[["min", "25%", "50%", "75%", "max"]]
-        plot_hist_with_normal(filtered["Total"])[0]
-        
+        score_summary = filtered["Total"].describe()[["min", "25%", "50%", "75%", "max"]]        
         col1, col2 = st.columns(2)
 
         with col1:
-            fig_hist, ax_hist = plt.subplots()
-            ax_hist.hist(filtered["Total"], bins=15, color="skyblue", edgecolor="black")
-            ax_hist.set_title("Histogram of Total Scores")
-            ax_hist.set_xlabel("Total Score")
-            ax_hist.set_ylabel("Frequency")
+            fig_hist, mu, sigma = plot_hist_with_normal(filtered["Total"])
             st.pyplot(fig_hist)
 
         with col2:
@@ -283,11 +269,28 @@ if len(filtered) >= 5:
             ax_kde.set_ylabel("Density")
             st.pyplot(fig_kde)
             
-        fig_hist, mu, sigma = plot_hist_with_normal(filtered["Total"])
-        st.pyplot(fig_hist)
-
         # Show summary table below
         st.markdown("### 🧾 Summary Statistics")
-        st.dataframe(score_summary.to_frame().rename(columns={"Total": "Score"}))
+        score_summary_named = score_summary.rename({
+            "min": "Min", "25%": "Q1", "50%": "Median", 
+            "75%": "Q3", "max": "Max"
+        })
+        st.dataframe(pd.DataFrame(score_summary_named).T)
+    
+    with tab2:
+        for metric, color in zip(["Strike", "Bonus", "Pins"], ["blue", "green", "pink"]):
+            col1, col2 = st.columns(2)
+            x_vals = filtered["Strike"] + filtered["Spare"] if metric == "Bonus" else filtered[metric]
+            fig1, fig2 = plot_residuals_with_fit(x_vals, filtered["Total"], metric, color)
+            with col1:
+                st.pyplot(fig1)
+            with col2:
+                st.pyplot(fig2)
+    
+    with tab3:
+        st.text(model.summary())
+
+    with tab4:
+        st.dataframe(model.params.rename("Coefficient").to_frame())
 else:
     st.warning("Not enough data!")
