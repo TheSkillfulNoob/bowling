@@ -74,11 +74,11 @@ with st.sidebar.form("entry_form", clear_on_submit=False):
 
     submitted = st.form_submit_button("Add to Database")
     if submitted:
-        update_data(date_input, location_input, games_input)
+        update_data_to_gsheet(date_input, location_input, games_input)
         # How to check duplicate data (where date and location are the same, and overwrite with newer data?)
 
 # Load and filter data
-df = load_data()
+df = load_data_from_gsheet()
 
 # Filters
 locations = df['Location'].dropna().unique()
