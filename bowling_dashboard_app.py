@@ -1,3 +1,5 @@
+# bowling_dashboard_app.py (Refactored & Cleaned)
+
 import gspread
 from scipy import stats
 from google.oauth2.service_account import Credentials
@@ -9,87 +11,42 @@ import seaborn as sns
 import numpy as np
 from gspread_dataframe import set_with_dataframe
 from datetime import datetime
-import json
 
-# Connect to Google Sheet
+# === Google Sheet Functions ===
 def connect_to_sheet():
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    credentials_dict = st.secrets["gcp_service_account"]
-    creds = Credentials.from_service_account_info(credentials_dict, scopes=scope)
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=scope
+    )
     client = gspread.authorize(creds)
-    sheet = client.open("bowling_db").sheet1
-    return sheet
+    return client.open("bowling_db").sheet1
 
-# Load game records from sheet
-def load_data_from_gsheet():
+def load_data():
     sheet = connect_to_sheet()
     df = pd.DataFrame(sheet.get_all_records())
     df = df.dropna(subset=["Date"])
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
-    df = df.dropna(subset=["Date"])  # remove rows where parsing failed
-    return df
+    return df.dropna(subset=["Date"])
 
-# Add new games and overwrite by date/location
-def update_data_to_gsheet(date_str, location_str, games):
-    df = load_data_from_gsheet()
-    date_parsed = pd.to_datetime(date_str, dayfirst=True).date()
+def update_data(date, location, games):
+    df = load_data()
+    date = pd.to_datetime(date).date()
+    new_rows = [{
+        "Date": date,
+        "Location": location,
+        "Game": i+1,
+        "Spare": s, "Strike": t, "Pins": p, "Total": score
+    } for i, (s, t, p, score) in enumerate(games)]
 
-    new_rows = []
-    for i, g in enumerate(games, 1):
-        spare, strike, pins, total = g
-        new_rows.append({
-            "Date": date_parsed,
-            "Location": location_str,
-            "Game": i,
-            "Spare": spare,
-            "Strike": strike,
-            "Pins": pins,
-            "Total": total
-        })
-
-    df = df[~((df["Date"] == date_parsed) & (df["Location"].str.lower() == location_str.lower()))]
+    df = df[~((df["Date"] == date) & (df["Location"].str.lower() == location.lower()))]
     updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
+    set_with_dataframe(connect_to_sheet(), updated_df)
+    st.success(f"✅ Updated session on {date} at {location}")
 
-    sheet = connect_to_sheet()
-    set_with_dataframe(sheet, updated_df)
-    st.success(f"✅ Added new session for {date_parsed} at {location_str} (replacing previous if existed).")
-
-# UI
-st.title("🎳 Bowling Dashboard")
-
-st.sidebar.header("➕ Add New Game Session")
-with st.sidebar.form("entry_form", clear_on_submit=False):
-    date_input = st.date_input("Date")
-    location_input = st.text_input("Location")
-    num_games = st.number_input("Number of Games", min_value=1, step=1)
-
-    games_input = []
-    for i in range(int(num_games)):
-        st.markdown(f"**Game {i+1}**")
-        spare = st.number_input(f"Spare {i+1}", key=f"sp_{i}", min_value=0, max_value=10)
-        strike = st.number_input(f"Strike {i+1}", key=f"st_{i}", min_value=0, max_value=10)
-        pins = st.number_input(f"Pins {i+1}", key=f"pi_{i}", min_value=0, max_value=100)
-        total = st.number_input(f"Total {i+1}", key=f"to_{i}", min_value=0, max_value=300)
-        games_input.append((spare, strike, pins, total))
-
-    submitted = st.form_submit_button("Add to Database")
-    if submitted:
-        update_data_to_gsheet(date_input, location_input, games_input)
-
-df = load_data_from_gsheet()
-if not df.empty and df['Date'].notna().any():
-    start_date_default = df['Date'].min()
-    end_date_default = df['Date'].max()
-else:
-    start_date_default = end_date_default = datetime.today()
-
-# Statistics
-st.subheader("📊 Statistics")
-col1, col2, col3 = st.columns([5, 5, 7])
-
+# === Helper Functions ===
 def format_avg(series):
     return pd.Series({
         "Spare": round(series.get("Spare", 0), 3),
@@ -98,199 +55,130 @@ def format_avg(series):
         "Total": round(series.get("Total", 0), 2)
     })
 
-def comparison_emoji(base_val, compare_val):
-    if pd.notna(base_val) and pd.notna(compare_val):
-        ratio = (compare_val - base_val) / base_val
-        if ratio > 0.03:
-            return " 🟢⬆️"
-        elif ratio < -0.03:
-            return " 🔴⬇️"
+def comparison_emoji(base, compare):
+    if pd.notna(base) and pd.notna(compare):
+        ratio = (compare - base) / base
+        if ratio > 0.03: return "🟢⬆️"
+        if ratio < -0.03: return "🔴⬇️"
     return ""
 
-last_5_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(5)
-last_10_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(10)
-
-overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean()
-avg_5d = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
-avg_10d = df[df['Date'].isin(last_10_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
-
-final_overall = format_avg(overall).rename(f"n = {df.shape[0]} games")
-# Theoretical maximums for each stat
-theoretical_max = {
-    "Spare": 10,
-    "Strike": 12,
-    "Pins": 100,
-    "Total": 300
-}
-
-# Initialize structure
-pb_rows = []
-for stat, max_val in theoretical_max.items():
-    pb_val = df[stat].max()
-    pb_date = df[df[stat] == pb_val]["Date"].iloc[0].strftime("%d/%m/%Y")  # take first matching
-    pb_rows.append([f"{pb_val} ({max_val})", pb_date])
-
-# PB for highest daily average total
-avg_by_date = df.groupby('Date')[['Total']].mean()
-max_avg_total = avg_by_date['Total'].max()
-avg_pb_date = avg_by_date['Total'].idxmax().strftime("%d/%m/%Y")
-
-pb_rows.append([f"{round(max_avg_total, 2)} (300)", avg_pb_date])
-
-final_max = pd.DataFrame(pb_rows, 
-    columns=["PB (out of)", "Date"],
-    index=["Spare", "Strike", "Pins", "Total", "Day"]
-)
-
-final_avg_5d = format_avg(avg_5d).rename("5MA")
-emojis_5d = [comparison_emoji(avg_10d[x], avg_5d[x]) for x in avg_5d.index]
-
-with col1:
-    st.markdown("**Overall: Average**")
-    st.dataframe(final_overall.to_frame())
-with col2:
-    st.markdown("**Moving Avg.**")
-    st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
-with col3:
-    st.markdown("**Personal Best**")
-    st.dataframe(final_max)
-
-st.markdown("🟢⬆️ is printed if 5MA is more than 3\% above 10MA; 🔴⬇️ for more than 3\% less.")
-
-# Charts
-st.subheader("📈 Trends Over Time")
-locations = df['Location'].dropna().unique()
-col1, col2, col3 = st.columns(3)
-with col1:
-    location = st.selectbox("Select location (optional)", ["All"] + list(locations))
-with col2:
-    start_date = st.date_input("Start Date", value=start_date_default)
-with col3:
-    end_date = st.date_input("End Date", value=end_date_default)
-
-filtered = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
-if location != "All":
-    filtered = filtered[filtered['Location'] == location]
-    
-avg_by_date = filtered.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
-
-col1, col2 = st.columns(2)
-with col1:
-    fig1, ax1 = plt.subplots()
-    avg_by_date[['Spare', 'Strike']].plot(marker='o', ax=ax1)
-    ax1.set_title("Spare & Strike")
-    ax1.set_ylabel("Count")
-    ax1.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
-    ax1.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
-    st.pyplot(fig1)
-
-with col2:
-    fig2, ax2 = plt.subplots()
-    avg_by_date[['Pins', 'Total']].plot(marker='o', ax=ax2)
-    ax2.set_title("Pins & Total")
-    ax2.set_ylabel("Score")
-    ax2.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
-    ax2.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
-    st.pyplot(fig2)
-
-# Analysis
-st.subheader("📉 Analysis")
 def plot_residuals_with_fit(x, y, xlabel, color):
     coeffs = np.polyfit(x, y, 1)
     reg_line = np.poly1d(coeffs)
     residuals = y - reg_line(x)
 
-    # Dot plot
     fig1, ax1 = plt.subplots()
     ax1.scatter(x, y, alpha=0.6, color=color)
-    ax1.plot(np.sort(x), reg_line(np.sort(x)), color="black", linestyle="--")
+    ax1.plot(np.sort(x), reg_line(np.sort(x)), 'k--')
+    ax1.text(0.05, 0.95, f"y = {coeffs[0]:.2f}x + {coeffs[1]:.2f}", transform=ax1.transAxes,
+             fontsize=9, bbox=dict(boxstyle="round", fc="white", ec="gray"))
+    ax1.set(title=f"Total Score vs. {xlabel}", xlabel=xlabel, ylabel="Total Score")
 
-    # Annotate regression equation
-    slope, intercept = coeffs
-    eqn_text = f"y = {slope:.2f}x + {intercept:.2f}"
-    ax1.text(0.05, 0.95, eqn_text, transform=ax1.transAxes, fontsize=9,
-             verticalalignment='top', bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray"))
-
-    ax1.set_title(f"Total Score vs. {xlabel}")
-    ax1.set_xlabel(xlabel)
-    ax1.set_ylabel("Total Score")
-
-    # Residual plot
     fig2, ax2 = plt.subplots()
     ax2.scatter(x, residuals, alpha=0.6, color="gray")
     ax2.axhline(0, linestyle="--", color="black")
-    ax2.set_title(f"Residuals vs. {xlabel}")
-    ax2.set_xlabel(xlabel)
-    ax2.set_ylabel("Residuals")
+    ax2.set(title=f"Residuals vs. {xlabel}", xlabel=xlabel, ylabel="Residuals")
 
     return fig1, fig2
 
 def plot_hist_with_normal(y):
     mu, sigma = np.mean(y), np.std(y)
     fig, ax1 = plt.subplots()
-
-    # Histogram (frequency)
-    counts, bins, _ = ax1.hist(y, bins=15, color="skyblue", edgecolor="black", alpha=0.7)
-    ax1.set_ylabel("Frequency")
-    ax1.set_xlabel("Total Score")
-    ax1.set_title("Histogram with Normal Fit")
-
-    # Density curve on secondary axis
+    counts, bins, _ = ax1.hist(y, bins=20, color="skyblue", edgecolor="black", alpha=0.7)
     ax2 = ax1.twinx()
-    density_vals = stats.norm.pdf(bins, mu, sigma)
-    ax2.plot(bins, density_vals, 'k--', linewidth=2, label=f"N({mu:.1f}, {sigma:.2f}²)", color="black")
-    ax2.set_ylabel("Density")
+    ax2.plot(bins, stats.norm.pdf(bins, mu, sigma), 'k--', label=f"N({mu:.1f}, {sigma:.2f}²)")
     ax2.legend(loc="upper right")
-
+    ax1.set(title="Histogram with Normal Fit", xlabel="Total Score", ylabel="Frequency")
+    ax2.set_ylabel("Density")
     return fig, mu, sigma
 
-if len(filtered) >= 5:
-    X = filtered[['Spare', 'Strike', 'Pins']]
-    X = sm.add_constant(X)
-    y = filtered['Total']
-    model = sm.OLS(y, X).fit()
+# === Streamlit UI ===
+st.title("🎳 Bowling Dashboard")
 
-    tab1, tab2, tab3, tab4 = st.tabs(["🎯 Score Distribution", "📊 Dot Plots", "📜 Reg. Summary", "📈 Reg. Coefficients"])
-    with tab1:
-        st.markdown("### 🎯 Distribution of Total Scores")
-        # Summary stats
-        score_summary = filtered["Total"].describe()[["min", "25%", "50%", "75%", "max"]]        
-        col1, col2 = st.columns(2)
+# Data Entry
+st.sidebar.header("➕ Add New Game Session")
+with st.sidebar.form("entry_form", clear_on_submit=False):
+    date_input = st.date_input("Date")
+    location = st.text_input("Location")
+    num_games = st.number_input("Games", min_value=1, step=1)
+    games = []
+    for i in range(int(num_games)):
+        st.markdown(f"**Game {i+1}**")
+        s = st.number_input(f"Spare {i+1}", 0, 10, key=f"sp_{i}")
+        t = st.number_input(f"Strike {i+1}", 0, 10, key=f"st_{i}")
+        p = st.number_input(f"Pins {i+1}", 0, 100, key=f"pi_{i}")
+        score = st.number_input(f"Total {i+1}", 0, 300, key=f"to_{i}")
+        games.append((s, t, p, score))
+    if st.form_submit_button("Add to Database"):
+        update_data(date_input, location, games)
 
+# Load and Process Data
+df = load_data()
+df["Bonus"] = df["Spare"] + df["Strike"]
+start_default, end_default = df["Date"].min(), df["Date"].max()
+
+# === Analysis Section ===
+if len(df) >= 5:
+    tab_analysis, tab_dist, tab_scatter, tab_summary, tab_coef = st.tabs([
+        "📈 Time Series", "🎯 Distribution", "📊 Dot Plots", "📜 OLS Summary", "📈 Coefficients"])
+
+    with tab_analysis:
+        locations = df['Location'].dropna().unique()
+        col1, col2, col3 = st.columns(3)
         with col1:
-            fig_hist, mu, sigma = plot_hist_with_normal(filtered["Total"])
-            st.pyplot(fig_hist)
-
+            loc = st.selectbox("Filter location", ["All"] + list(locations))
         with col2:
-            fig_kde, ax_kde = plt.subplots()
-            sns.kdeplot(filtered["Total"], fill=True, ax=ax_kde, color="purple", linewidth=2)
-            ax_kde.set_title("KDE of Total Scores")
-            ax_kde.set_xlabel("Total Score")
-            ax_kde.set_ylabel("Density")
+            start = st.date_input("Start Date", value=start_default)
+        with col3:
+            end = st.date_input("End Date", value=end_default)
+
+        data = df[(df['Date'] >= start) & (df['Date'] <= end)]
+        if loc != "All":
+            data = data[data['Location'] == loc]
+
+        avg_by_date = data.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
+        col1, col2 = st.columns(2)
+        with col1:
+            fig1, ax1 = plt.subplots()
+            avg_by_date[['Spare', 'Strike']].plot(marker='o', ax=ax1)
+            ax1.set_title("Spare & Strike Over Time")
+            st.pyplot(fig1)
+        with col2:
+            fig2, ax2 = plt.subplots()
+            avg_by_date[['Pins', 'Total']].plot(marker='o', ax=ax2)
+            ax2.set_title("Pins & Total Over Time")
+            st.pyplot(fig2)
+
+    with tab_dist:
+        st.markdown("### 🧾 Score Summary")
+        desc = df['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
+        st.dataframe(pd.DataFrame(desc.rename({"min":"Min", "25%":"Q1", "50%":"Median", "75%":"Q3", "max":"Max"})).T)
+        col1, col2 = st.columns(2)
+        with col1:
+            fig, mu, sigma = plot_hist_with_normal(df["Total"])
+            st.pyplot(fig)
+        with col2:
+            fig_kde, ax = plt.subplots()
+            sns.kdeplot(df["Total"], fill=True, ax=ax, color="purple")
+            ax.set_title("KDE of Total Scores")
             st.pyplot(fig_kde)
-            
-        # Show summary table below
-        st.markdown("### 🧾 Summary Statistics")
-        score_summary_named = score_summary.rename({
-            "min": "Min", "25%": "Q1", "50%": "Median", 
-            "75%": "Q3", "max": "Max"
-        })
-        st.dataframe(pd.DataFrame(score_summary_named).T)
-    
-    with tab2:
+
+    with tab_scatter:
         for metric, color in zip(["Strike", "Bonus", "Pins"], ["blue", "green", "pink"]):
             col1, col2 = st.columns(2)
-            x_vals = filtered["Strike"] + filtered["Spare"] if metric == "Bonus" else filtered[metric]
-            fig1, fig2 = plot_residuals_with_fit(x_vals, filtered["Total"], metric, color)
-            with col1:
-                st.pyplot(fig1)
-            with col2:
-                st.pyplot(fig2)
-    
-    with tab3:
+            x = df["Strike"] + df["Spare"] if metric == "Bonus" else df[metric]
+            fig1, fig2 = plot_residuals_with_fit(x, df["Total"], metric, color)
+            with col1: st.pyplot(fig1)
+            with col2: st.pyplot(fig2)
+
+    with tab_summary:
+        X = sm.add_constant(df[["Spare", "Strike", "Pins"]])
+        y = df["Total"]
+        model = sm.OLS(y, X).fit()
         st.text(model.summary())
 
-    with tab4:
+    with tab_coef:
         st.dataframe(model.params.rename("Coefficient").to_frame())
+
 else:
-    st.warning("Not enough data!")
+    st.warning("Not enough data for analysis.")
