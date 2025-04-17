@@ -55,7 +55,7 @@ def update_data_to_gsheet(date_str, location_str, games):
     st.success(f"✅ Added new session for {date_parsed} at {location_str} (replacing previous if existed).")
 
 # UI
-st.title("🎳 Bowling Stats Dashboard")
+st.title("🎳 Bowling Dashboard")
 
 st.sidebar.header("➕ Add New Game Session")
 with st.sidebar.form("entry_form", clear_on_submit=False):
@@ -83,8 +83,8 @@ if not df.empty and df['Date'].notna().any():
 else:
     start_date_default = end_date_default = datetime.today()
 
-# Averages
-st.subheader("📊 Averages")
+# Statistics
+st.subheader("📊 Statistics")
 col1, col2, col3 = st.columns(3)
 
 def format_avg(series):
@@ -104,32 +104,28 @@ def comparison_emoji(base_val, compare_val):
             return " 🔴⬇️"
     return ""
 
-last_50 = df.tail(50)
-last_20 = df.tail(20)
 last_5_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(5)
-last_2_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(2)
+last_10_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(10)
 
 overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean()
-avg_50 = last_50[['Spare', 'Strike', 'Pins', 'Total']].mean()
-avg_20 = last_20[['Spare', 'Strike', 'Pins', 'Total']].mean()
+max_stats = df[['Spare', 'Strike', 'Pins', 'Total']].max()
 avg_5d = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
-avg_2d = df[df['Date'].isin(last_2_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
+avg_10d = df[df['Date'].isin(last_10_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 
-final_overall = format_avg(overall).rename("Overall")
-final_avg_50 = format_avg(avg_50).rename("Last 50 Games")
+final_overall = format_avg(overall).rename(f"Overall ({df.shape[0]} games)")
+final_max = max_stats.rename("Personal Best")
 final_avg_5d = format_avg(avg_5d).rename("Last 5 Dates")
 
-emojis_50 = [comparison_emoji(avg_50[x], avg_20[x]) for x in avg_50.index]
-emojis_5d = [comparison_emoji(avg_5d[x], avg_2d[x]) for x in avg_5d.index]
+emojis_5d = [comparison_emoji(avg_5d[x], avg_10d[x]) for x in avg_5d.index]
 
 with col1:
-    st.markdown("**Overall**")
+    st.markdown("**Overall: Average**")
     st.dataframe(final_overall.to_frame())
 with col2:
-    st.markdown("**Last 50 Games**")
-    st.dataframe(final_avg_50.to_frame().assign(Trend=emojis_50))
+    st.markdown("**Personal Best**")
+    st.dataframe(final_max.to_frame())
 with col3:
-    st.markdown("**Last 5 Dates**")
+    st.markdown("**Last 5 Dates: Average **")
     st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
 
 # Charts
