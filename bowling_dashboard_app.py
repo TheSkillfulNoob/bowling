@@ -7,6 +7,7 @@ import statsmodels.api as sm
 from gspread_dataframe import set_with_dataframe
 from datetime import datetime
 import json
+from annotated_text import annotated_text
 
 # Connect to Google Sheet
 def connect_to_sheet():
@@ -127,9 +128,16 @@ for stat, max_val in theoretical_max.items():
     pb_date = df[df[stat] == pb_val]["Date"].iloc[0].strftime("%d/%m/%Y")  # take first matching
     pb_rows.append([f"{pb_val} ({max_val})", pb_date])
 
+# PB for highest daily average total
+avg_by_date = df.groupby('Date')[['Total']].mean()
+max_avg_total = avg_by_date['Total'].max()
+avg_pb_date = avg_by_date['Total'].idxmax().strftime("%d/%m/%Y")
+
+pb_rows.append([f"{round(max_avg_total, 2)} (300)", avg_pb_date])
+
 final_max = pd.DataFrame(pb_rows, 
     columns=["PB (out of)", "Date"],
-    index=["Spare", "Strike", "Pins", "Total"]
+    index=["Spare", "Strike", "Pins", "Total", "Day Avg"]
 )
 
 final_avg_5d = format_avg(avg_5d).rename("Last 5 Dates")
@@ -145,7 +153,7 @@ with col3:
     st.markdown("**Moving Average (5 Dates)**")
     st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
 
-print("🟢⬆️ is printed if 5MA is more than 3\% above 10MA; 🔴⬇️ for more than 3\% less.")
+st.markdown("🟢⬆️ is printed if 5MA is more than 3\% above 10MA; 🔴⬇️ for more than 3\% less.")
 
 # Charts
 st.subheader("📈 Trends Over Time")
