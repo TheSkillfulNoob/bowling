@@ -104,7 +104,7 @@ st.subheader("📊 Averages")
 col1, col2, col3 = st.columns(3)
 overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean().rename("Overall")
 last_50 = df.tail(50)[['Spare', 'Strike', 'Pins', 'Total']].mean().rename("Last 50 Games")
-last_5_dates = df['Date'].drop_duplicates().nlargest(5)
+last_5_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(5) #nlargest(5) returns error
 last_5 = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean().rename("Last 5 Dates")
 
 with col1:
