@@ -83,19 +83,6 @@ if not df.empty and df['Date'].notna().any():
 else:
     start_date_default = end_date_default = datetime.today()
 
-locations = df['Location'].dropna().unique()
-col1, col2, col3 = st.columns(3)
-with col1:
-    location = st.selectbox("Select location (optional)", ["All"] + list(locations))
-with col2:
-    start_date = st.date_input("Start Date", value=start_date_default)
-with col3:
-    end_date = st.date_input("End Date", value=end_date_default)
-
-filtered = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
-if location != "All":
-    filtered = filtered[filtered['Location'] == location]
-
 # Averages
 st.subheader("📊 Averages")
 col1, col2, col3 = st.columns(3)
@@ -117,16 +104,16 @@ def comparison_emoji(base_val, compare_val):
             return " 🔴⬇️"
     return ""
 
-last_50 = filtered.tail(50)
-last_20 = filtered.tail(20)
-last_5_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(5)
-last_2_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(2)
+last_50 = df.tail(50)
+last_20 = df.tail(20)
+last_5_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(5)
+last_2_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(2)
 
 overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_50 = last_50[['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_20 = last_20[['Spare', 'Strike', 'Pins', 'Total']].mean()
-avg_5d = filtered[filtered['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
-avg_2d = filtered[filtered['Date'].isin(last_2_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
+avg_5d = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
+avg_2d = df[df['Date'].isin(last_2_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 
 final_overall = format_avg(overall).rename("Overall")
 final_avg_50 = format_avg(avg_50).rename("Last 50 Games")
@@ -147,6 +134,19 @@ with col3:
 
 # Charts
 st.subheader("📈 Trends Over Time")
+locations = df['Location'].dropna().unique()
+col1, col2, col3 = st.columns(3)
+with col1:
+    location = st.selectbox("Select location (optional)", ["All"] + list(locations))
+with col2:
+    start_date = st.date_input("Start Date", value=start_date_default)
+with col3:
+    end_date = st.date_input("End Date", value=end_date_default)
+
+filtered = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
+if location != "All":
+    filtered = filtered[filtered['Location'] == location]
+    
 avg_by_date = filtered.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
 
 col1, col2 = st.columns(2)
