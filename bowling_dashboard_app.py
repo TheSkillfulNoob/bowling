@@ -108,20 +108,31 @@ last_5_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(5)
 last_10_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(10)
 
 overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean()
-max_stats = df[['Spare', 'Strike', 'Pins', 'Total']].max()
 avg_5d = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 avg_10d = df[df['Date'].isin(last_10_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 
 final_overall = format_avg(overall).rename(f"Overall ({df.shape[0]} games)")
-final_max = max_stats.rename("Personal Best").to_frame()
-final_max["Out of"] = [
-    f"10",
-    f"12",
-    f"100",
-    f"300 ({(final_max.loc['Total', 'Personal Best'] / 300) * 100:.1f}%)"
-]
-final_avg_5d = format_avg(avg_5d).rename("Last 5 Dates")
+# Theoretical maximums for each stat
+theoretical_max = {
+    "Spare": 10,
+    "Strike": 12,
+    "Pins": 100,
+    "Total": 300
+}
 
+# Initialize structure
+pb_rows = []
+for stat, max_val in theoretical_max.items():
+    pb_val = df[stat].max()
+    pb_date = df[df[stat] == pb_val]["Date"].iloc[0].strftime("%d/%m/%Y")  # take first matching
+    pb_rows.append([f"{pb_val} ({max_val})", pb_date])
+
+final_max = pd.DataFrame(pb_rows, 
+    columns=["PB (out of)", "Date"],
+    index=["Spare", "Strike", "Pins", "Total"]
+)
+
+final_avg_5d = format_avg(avg_5d).rename("Last 5 Dates")
 emojis_5d = [comparison_emoji(avg_10d[x], avg_5d[x]) for x in avg_5d.index]
 
 with col1:
@@ -133,6 +144,8 @@ with col2:
 with col3:
     st.markdown("**Moving Average (5 Dates)**")
     st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
+
+print("🟢⬆️ is printed if 5MA is more than 3\% above 10MA; 🔴⬇️ for more than 3\% less.")
 
 # Charts
 st.subheader("📈 Trends Over Time")
