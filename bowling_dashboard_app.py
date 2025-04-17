@@ -127,9 +127,45 @@ if len(filtered) >= 5:
     y = filtered['Total']
     model = sm.OLS(y, X).fit()
 
-    tab_ts, tab_scoredist, tab_dotplot, tab_regression = st.tabs(["📈 Time Series & Stats", "🎯 Score Distribution", "📊 Dot Plots", "📜 Reg. Summary"])
+    tab_ts, tab_scorestats, tab_dotplot, tab_regression = st.tabs(["📈 Time Series and Dist.", "🎯 Key Statistics", "📊 Dot Plots", "📜 Reg. Summary"])
 
     with tab_ts:
+        st.subheader("📈 Time Series Trends")
+        avg_by_date = filtered.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
+        col1, col2 = st.columns(2)
+        with col1:
+            fig1, ax1 = plt.subplots()
+            avg_by_date[['Spare', 'Strike']].plot(marker='o', ax=ax1)
+            ax1.set_title("Spare & Strike")
+            ax1.set_ylabel("Count")
+            ax1.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
+            ax1.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
+            st.pyplot(fig1)
+        with col2:
+            fig2, ax2 = plt.subplots()
+            avg_by_date[['Pins', 'Total']].plot(marker='o', ax=ax2)
+            ax2.set_title("Pins & Total")
+            ax2.set_ylabel("Score")
+            ax2.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
+            ax2.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
+            st.pyplot(fig2)
+        
+        st.subheader("📊 Histogram and Normal Density Plot")
+        col1, col2 = st.columns(2)
+        with col1:
+            fig, mu, sigma = plot_hist_with_normal(filtered["Total"])
+            st.pyplot(fig)
+        with col2:
+            fig_kde, ax = plt.subplots()
+            sns.kdeplot(filtered["Total"], fill=True, ax=ax, color="purple")
+            ax.set_title("KDE of Total Scores")
+            st.pyplot(fig_kde)
+        
+    with tab_scorestats:
+        st.markdown("### 🧾 Score Summary")
+        desc = filtered['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
+        st.dataframe(pd.DataFrame(desc.rename({"min":"Min", "25%":"Q1", "50%":"Median", "75%":"Q3", "max":"Max"})).T)
+        
         st.subheader("🎯 Key Statistics")
         last_5_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(5)
         last_10_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(10)
@@ -168,42 +204,6 @@ if len(filtered) >= 5:
             st.dataframe(final_max)
 
         st.markdown("🟢⬆️ = 5MA > 10MA by more than 3%; 🔴⬇️ = 5MA < 10MA by more than 3%")
-
-        st.markdown("### 🧾 Score Summary")
-        desc = filtered['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
-        st.dataframe(pd.DataFrame(desc.rename({"min":"Min", "25%":"Q1", "50%":"Median", "75%":"Q3", "max":"Max"})).T)
-        
-    with tab_scoredist:
-        st.subheader("📈 Time Series Trends")
-        avg_by_date = filtered.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
-        col1, col2 = st.columns(2)
-        with col1:
-            fig1, ax1 = plt.subplots()
-            avg_by_date[['Spare', 'Strike']].plot(marker='o', ax=ax1)
-            ax1.set_title("Spare & Strike")
-            ax1.set_ylabel("Count")
-            ax1.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
-            ax1.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
-            st.pyplot(fig1)
-        with col2:
-            fig2, ax2 = plt.subplots()
-            avg_by_date[['Pins', 'Total']].plot(marker='o', ax=ax2)
-            ax2.set_title("Pins & Total")
-            ax2.set_ylabel("Score")
-            ax2.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
-            ax2.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
-            st.pyplot(fig2)
-        
-        st.subheader("📊 Histogram and Normal Density Plot")
-        col1, col2 = st.columns(2)
-        with col1:
-            fig, mu, sigma = plot_hist_with_normal(filtered["Total"])
-            st.pyplot(fig)
-        with col2:
-            fig_kde, ax = plt.subplots()
-            sns.kdeplot(filtered["Total"], fill=True, ax=ax, color="purple")
-            ax.set_title("KDE of Total Scores")
-            st.pyplot(fig_kde)
 
     with tab_dotplot:
         for metric, color in zip(["Strike", "Bonus", "Pins"], ["blue", "green", "pink"]):
