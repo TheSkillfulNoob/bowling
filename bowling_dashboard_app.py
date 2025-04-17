@@ -146,7 +146,7 @@ with col1:
     st.markdown("**Overall: Average**")
     st.dataframe(final_overall.to_frame())
 with col2:
-    st.markdown("**Moving Average (5 Dates)**")
+    st.markdown("**Moving Avg.**")
     st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
 with col3:
     st.markdown("**Personal Best**")
@@ -190,18 +190,49 @@ with col2:
     ax2.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
     st.pyplot(fig2)
 
-# Regression
-st.subheader("📉 Regression Model")
+# Analysis
+st.subheader("📉 Analysis")
 if len(filtered) >= 5:
     X = filtered[['Spare', 'Strike', 'Pins']]
     X = sm.add_constant(X)
     y = filtered['Total']
     model = sm.OLS(y, X).fit()
 
-    tab1, tab2 = st.tabs(["📜 Summary", "📈 Coefficients"])
+    tab1, tab2, tab3 = st.tabs(["📜 Reg. Summary", "📈 Reg. Coefficients", "📊 Plots"])
+
     with tab1:
         st.text(model.summary())
+
     with tab2:
         st.dataframe(model.params.rename("Coefficient").to_frame())
+
+    with tab3:
+        col1, col2 = st.columns(2)
+
+        with col1:
+            fig_strike, ax_strike = plt.subplots()
+            ax_strike.scatter(filtered["Strike"], filtered["Total"], alpha=0.6)
+            ax_strike.set_title("Total Score vs. Strikes")
+            ax_strike.set_xlabel("Strikes")
+            ax_strike.set_ylabel("Total Score")
+            st.pyplot(fig_strike)
+
+        with col2:
+            fig_spare, ax_spare = plt.subplots()
+            ax_spare.scatter(filtered["Spare"], filtered["Total"], alpha=0.6, color="orange")
+            ax_spare.set_title("Total Score vs. Spares")
+            ax_spare.set_xlabel("Spares")
+            ax_spare.set_ylabel("Total Score")
+            st.pyplot(fig_spare)
+
+        # Histogram (spanning full width)
+        st.markdown("### 🎯 Distribution of Total Scores")
+        fig_hist, ax_hist = plt.subplots()
+        ax_hist.hist(filtered["Total"], bins=15, color="skyblue", edgecolor="black")
+        ax_hist.set_title("Histogram of Total Scores")
+        ax_hist.set_xlabel("Total Score")
+        ax_hist.set_ylabel("Frequency")
+        st.pyplot(fig_hist)
+
 else:
     st.warning("Not enough data after filtering to fit a regression model.")
