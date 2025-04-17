@@ -1,5 +1,3 @@
-# bowling_dashboard_app.py (Refactored & Cleaned)
-
 import gspread
 from scipy import stats
 from google.oauth2.service_account import Credentials
@@ -18,36 +16,65 @@ def connect_to_sheet():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"], scopes=scope
-    )
+    credentials_dict = st.secrets["gcp_service_account"]
+    creds = Credentials.from_service_account_info(credentials_dict, scopes=scope)
     client = gspread.authorize(creds)
     return client.open("bowling_db").sheet1
 
-def load_data():
+def load_data_from_gsheet():
     sheet = connect_to_sheet()
     df = pd.DataFrame(sheet.get_all_records())
     df = df.dropna(subset=["Date"])
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce").dt.date
     return df.dropna(subset=["Date"])
 
-def update_data(date, location, games):
-    df = load_data()
-    date = pd.to_datetime(date).date()
-    new_rows = [{
-        "Date": date,
-        "Location": location,
-        "Game": i+1,
-        "Spare": s, "Strike": t, "Pins": p, "Total": score
-    } for i, (s, t, p, score) in enumerate(games)]
-
-    df = df[~((df["Date"] == date) & (df["Location"].str.lower() == location.lower()))]
+def update_data_to_gsheet(date_str, location_str, games):
+    df = load_data_from_gsheet()
+    date_parsed = pd.to_datetime(date_str, dayfirst=True).date()
+    new_rows = [
+        {"Date": date_parsed, "Location": location_str, "Game": i+1, "Spare": g[0], "Strike": g[1], "Pins": g[2], "Total": g[3]}
+        for i, g in enumerate(games)
+    ]
+    df = df[~((df["Date"] == date_parsed) & (df["Location"].str.lower() == location_str.lower()))]
     updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
     set_with_dataframe(connect_to_sheet(), updated_df)
-    st.success(f"✅ Updated session on {date} at {location}")
+    st.success(f"✅ Session for {date_parsed} at {location_str} added/replaced.")
 
-# === Helper Functions ===
-def format_avg(series):
+# === Streamlit UI ===
+st.title("🎳 Bowling Dashboard")
+
+st.sidebar.header("➕ Add New Game Session")
+with st.sidebar.form("entry_form", clear_on_submit=False):
+    date_input = st.date_input("Date")
+    location_input = st.text_input("Location")
+    num_games = st.number_input("Number of Games", min_value=1, step=1)
+    games_input = [
+        (st.number_input(f"Spare {i+1}", key=f"sp_{i}", min_value=0, max_value=10),
+         st.number_input(f"Strike {i+1}", key=f"st_{i}", min_value=0, max_value=12),
+         st.number_input(f"Pins {i+1}", key=f"pi_{i}", min_value=0, max_value=100),
+         st.number_input(f"Total {i+1}", key=f"to_{i}", min_value=0, max_value=300))
+        for i in range(int(num_games))
+    ]
+    if st.form_submit_button("Add to Database"):
+        update_data_to_gsheet(date_input, location_input, games_input)
+
+# === Load Data and Apply Filters ===
+df = load_data_from_gsheet()
+start_date_default, end_date_default = df['Date'].min(), df['Date'].max()
+locations = df['Location'].dropna().unique()
+col1, col2, col3 = st.columns(3)
+with col1:
+    location = st.selectbox("Select location (optional)", ["All"] + list(locations))
+with col2:
+    start_date = st.date_input("Start Date", value=start_date_default)
+with col3:
+    end_date = st.date_input("End Date", value=end_date_default)
+filtered = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
+if location != "All":
+    filtered = filtered[filtered['Location'] == location]
+
+# Helper Functions
+def format_avg(series): # For tab_ts
     return pd.Series({
         "Spare": round(series.get("Spare", 0), 3),
         "Strike": round(series.get("Strike", 0), 3),
@@ -55,14 +82,14 @@ def format_avg(series):
         "Total": round(series.get("Total", 0), 2)
     })
 
-def comparison_emoji(base, compare):
-    if pd.notna(base) and pd.notna(compare):
-        ratio = (compare - base) / base
-        if ratio > 0.03: return "🟢⬆️"
-        if ratio < -0.03: return "🔴⬇️"
+def comparison_emoji(base_val, compare_val): # For tab_ts
+    if pd.notna(base_val) and pd.notna(compare_val):
+        ratio = (compare_val - base_val) / base_val
+        if ratio > 0.03: return " 🟢⬆️"
+        elif ratio < -0.03: return " 🔴⬇️"
     return ""
 
-def plot_residuals_with_fit(x, y, xlabel, color):
+def plot_residuals_with_fit(x, y, xlabel, color): # For tab_dotplot
     coeffs = np.polyfit(x, y, 1)
     reg_line = np.poly1d(coeffs)
     residuals = y - reg_line(x)
@@ -81,7 +108,7 @@ def plot_residuals_with_fit(x, y, xlabel, color):
 
     return fig1, fig2
 
-def plot_hist_with_normal(y):
+def plot_hist_with_normal(y): # For tab_scoredist
     mu, sigma = np.mean(y), np.std(y)
     fig, ax1 = plt.subplots()
     counts, bins, _ = ax1.hist(y, bins=20, color="skyblue", edgecolor="black", alpha=0.7)
@@ -92,64 +119,77 @@ def plot_hist_with_normal(y):
     ax2.set_ylabel("Density")
     return fig, mu, sigma
 
-# === Streamlit UI ===
-st.title("🎳 Bowling Dashboard")
+# === Analysis Tabs ===
+if len(filtered) >= 5:
+    X = filtered[['Spare', 'Strike', 'Pins']]
+    X = sm.add_constant(X)
+    y = filtered['Total']
+    model = sm.OLS(y, X).fit()
 
-# Data Entry
-st.sidebar.header("➕ Add New Game Session")
-with st.sidebar.form("entry_form", clear_on_submit=False):
-    date_input = st.date_input("Date")
-    location = st.text_input("Location")
-    num_games = st.number_input("Games", min_value=1, step=1)
-    games = []
-    for i in range(int(num_games)):
-        st.markdown(f"**Game {i+1}**")
-        s = st.number_input(f"Spare {i+1}", 0, 10, key=f"sp_{i}")
-        t = st.number_input(f"Strike {i+1}", 0, 10, key=f"st_{i}")
-        p = st.number_input(f"Pins {i+1}", 0, 100, key=f"pi_{i}")
-        score = st.number_input(f"Total {i+1}", 0, 300, key=f"to_{i}")
-        games.append((s, t, p, score))
-    if st.form_submit_button("Add to Database"):
-        update_data(date_input, location, games)
+    tab_ts, tab_scoredist, tab_dotplot, tab_regression = st.tabs(["📈 Time Series & Stats", "🎯 Score Distribution", "📊 Dot Plots", "📜 Reg. Summary"])
 
-# Load and Process Data
-df = load_data()
-df["Bonus"] = df["Spare"] + df["Strike"]
-start_default, end_default = df["Date"].min(), df["Date"].max()
+    with tab_ts:
+        st.subheader("📊 Key Statistics")
 
-# === Analysis Section ===
-if len(df) >= 5:
-    tab_analysis, tab_dist, tab_scatter, tab_summary, tab_coef = st.tabs([
-        "📈 Time Series", "🎯 Distribution", "📊 Dot Plots", "📜 OLS Summary", "📈 Coefficients"])
+        last_5_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(5)
+        last_10_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(10)
 
-    with tab_analysis:
-        locations = df['Location'].dropna().unique()
-        col1, col2, col3 = st.columns(3)
+        overall = filtered[['Spare', 'Strike', 'Pins', 'Total']].mean()
+        avg_5d = filtered[filtered['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
+        avg_10d = filtered[filtered['Date'].isin(last_10_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
+
+        final_overall = format_avg(overall).rename(f"n = {filtered.shape[0]} games")
+        final_avg_5d = format_avg(avg_5d).rename("5MA")
+        emojis_5d = [comparison_emoji(avg_10d[x], avg_5d[x]) for x in avg_5d.index]
+
+        theoretical_max = {"Spare": 10, "Strike": 12, "Pins": 100, "Total": 300}
+        pb_rows = []
+        for stat, max_val in theoretical_max.items():
+            pb_val = df[stat].max()
+            pb_date = df[df[stat] == pb_val]["Date"].iloc[0].strftime("%d/%m/%Y")
+            pb_rows.append([f"{pb_val} ({max_val})", pb_date])
+
+        avg_by_date = df.groupby('Date')[['Total']].mean()
+        max_avg_total = avg_by_date['Total'].max()
+        avg_pb_date = avg_by_date['Total'].idxmax().strftime("%d/%m/%Y")
+        pb_rows.append([f"{round(max_avg_total, 2)} (300)", avg_pb_date])
+
+        final_max = pd.DataFrame(pb_rows, columns=["PB (out of)", "Date"], index=["Spare", "Strike", "Pins", "Total", "Day"])
+
+        col1, col2, col3 = st.columns([9, 11, 14])
         with col1:
-            loc = st.selectbox("Filter location", ["All"] + list(locations))
+            st.markdown("**Overall: Average**")
+            st.dataframe(final_overall.to_frame())
         with col2:
-            start = st.date_input("Start Date", value=start_default)
+            st.markdown("**Moving Avg.**")
+            st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
         with col3:
-            end = st.date_input("End Date", value=end_default)
+            st.markdown("**Personal Best**")
+            st.dataframe(final_max)
 
-        data = df[(df['Date'] >= start) & (df['Date'] <= end)]
-        if loc != "All":
-            data = data[data['Location'] == loc]
+        st.markdown("🟢⬆️ = 5MA > 10MA by >3%; 🔴⬇️ = 5MA < 10MA by >3%")
 
-        avg_by_date = data.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
+        st.subheader("📈 Time Series Trends")
+        avg_by_date = filtered.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
         col1, col2 = st.columns(2)
         with col1:
             fig1, ax1 = plt.subplots()
             avg_by_date[['Spare', 'Strike']].plot(marker='o', ax=ax1)
-            ax1.set_title("Spare & Strike Over Time")
+            ax1.set_title("Spare & Strike")
+            ax1.set_ylabel("Count")
+            ax1.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
+            ax1.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
             st.pyplot(fig1)
         with col2:
             fig2, ax2 = plt.subplots()
             avg_by_date[['Pins', 'Total']].plot(marker='o', ax=ax2)
-            ax2.set_title("Pins & Total Over Time")
+            ax2.set_title("Pins & Total")
+            ax2.set_ylabel("Score")
+            ax2.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
+            ax2.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
             st.pyplot(fig2)
 
-    with tab_dist:
+    with tab_scoredist:
         st.markdown("### 🧾 Score Summary")
         desc = df['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
         st.dataframe(pd.DataFrame(desc.rename({"min":"Min", "25%":"Q1", "50%":"Median", "75%":"Q3", "max":"Max"})).T)
@@ -163,7 +203,7 @@ if len(df) >= 5:
             ax.set_title("KDE of Total Scores")
             st.pyplot(fig_kde)
 
-    with tab_scatter:
+    with tab_dotplot:
         for metric, color in zip(["Strike", "Bonus", "Pins"], ["blue", "green", "pink"]):
             col1, col2 = st.columns(2)
             x = df["Strike"] + df["Spare"] if metric == "Bonus" else df[metric]
@@ -171,14 +211,12 @@ if len(df) >= 5:
             with col1: st.pyplot(fig1)
             with col2: st.pyplot(fig2)
 
-    with tab_summary:
+    with tab_regression:
         X = sm.add_constant(df[["Spare", "Strike", "Pins"]])
         y = df["Total"]
         model = sm.OLS(y, X).fit()
         st.text(model.summary())
 
-    with tab_coef:
         st.dataframe(model.params.rename("Coefficient").to_frame())
-
 else:
-    st.warning("Not enough data for analysis.")
+    st.warning("Not enough data!")
