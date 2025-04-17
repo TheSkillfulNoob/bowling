@@ -4,6 +4,8 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
+import seaborn as sns
+import numpy as np
 from gspread_dataframe import set_with_dataframe
 from datetime import datetime
 import json
@@ -191,6 +193,7 @@ with col2:
     st.pyplot(fig2)
 
 # Analysis
+# Analysis
 st.subheader("📉 Analysis")
 if len(filtered) >= 5:
     X = filtered[['Spare', 'Strike', 'Pins']]
@@ -198,7 +201,7 @@ if len(filtered) >= 5:
     y = filtered['Total']
     model = sm.OLS(y, X).fit()
 
-    tab1, tab2, tab3 = st.tabs(["📜 Reg. Summary", "📈 Reg. Coefficients", "📊 Plots"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📜 Reg. Summary", "📈 Reg. Coefficients", "📊 Dot Plots", "🎯 Score Distribution"])
 
     with tab1:
         st.text(model.summary())
@@ -206,33 +209,69 @@ if len(filtered) >= 5:
     with tab2:
         st.dataframe(model.params.rename("Coefficient").to_frame())
 
+    # Helper function for scatter plots
+    def plot_scatter_with_regression(x, y, title, xlabel, color="blue"):
+        fig, ax = plt.subplots()
+
+        # Scatter
+        ax.scatter(x, y, alpha=0.6, color=color, label="Data")
+
+        # Fit linear regression
+        coeffs = np.polyfit(x, y, 1)
+        reg_line = np.poly1d(coeffs)
+        x_vals = np.linspace(min(x), max(x), 100)
+        y_vals = reg_line(x_vals)
+
+        # Plot regression line
+        ax.plot(x_vals, y_vals, color="black", linestyle="--", label="Regression Line")
+
+        # Annotate equation
+        slope = coeffs[0]
+        intercept = coeffs[1]
+        ax.text(0.05, 0.95,
+                f"y = {slope:.2f}x + {intercept:.2f}",
+                transform=ax.transAxes,
+                fontsize=9,
+                verticalalignment='top',
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray"))
+
+        # Labels
+        ax.set_title(title)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel("Total Score")
+        ax.legend()
+
+        return fig
+
     with tab3:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.pyplot(plot_scatter_with_regression(filtered["Strike"], filtered["Total"], "Total Score vs. Strikes", "Strikes"))
+            st.pyplot(plot_scatter_with_regression(filtered["Strike"] + filtered["Spare"], filtered["Total"], "Total Score vs. Bonus Frames", "Strikes + Spares", "green"))
+        with col2:
+            st.pyplot(plot_scatter_with_regression(filtered["Spare"], filtered["Total"], "Total Score vs. Spares", "Spares", "orange"))
+            st.pyplot(plot_scatter_with_regression(filtered["Pins"], filtered["Total"], "Total Score vs. Pins", "Total Pins", "pink"))
+
+    with tab4:
+        st.markdown("### 🎯 Distribution of Total Scores")
+
         col1, col2 = st.columns(2)
 
         with col1:
-            fig_strike, ax_strike = plt.subplots()
-            ax_strike.scatter(filtered["Strike"], filtered["Total"], alpha=0.6)
-            ax_strike.set_title("Total Score vs. Strikes")
-            ax_strike.set_xlabel("Strikes")
-            ax_strike.set_ylabel("Total Score")
-            st.pyplot(fig_strike)
+            fig_hist, ax_hist = plt.subplots()
+            ax_hist.hist(filtered["Total"], bins=15, color="skyblue", edgecolor="black")
+            ax_hist.set_title("Histogram of Total Scores")
+            ax_hist.set_xlabel("Total Score")
+            ax_hist.set_ylabel("Frequency")
+            st.pyplot(fig_hist)
 
         with col2:
-            fig_spare, ax_spare = plt.subplots()
-            ax_spare.scatter(filtered["Spare"], filtered["Total"], alpha=0.6, color="orange")
-            ax_spare.set_title("Total Score vs. Spares")
-            ax_spare.set_xlabel("Spares")
-            ax_spare.set_ylabel("Total Score")
-            st.pyplot(fig_spare)
-
-        # Histogram (spanning full width)
-        st.markdown("### 🎯 Distribution of Total Scores")
-        fig_hist, ax_hist = plt.subplots()
-        ax_hist.hist(filtered["Total"], bins=15, color="skyblue", edgecolor="black")
-        ax_hist.set_title("Histogram of Total Scores")
-        ax_hist.set_xlabel("Total Score")
-        ax_hist.set_ylabel("Frequency")
-        st.pyplot(fig_hist)
+            fig_kde, ax_kde = plt.subplots()
+            sns.kdeplot(filtered["Total"], fill=True, ax=ax_kde, color="purple", linewidth=2)
+            ax_kde.set_title("KDE of Total Scores")
+            ax_kde.set_xlabel("Total Score")
+            ax_kde.set_ylabel("Density")
+            st.pyplot(fig_kde)
 
 else:
-    st.warning("Not enough data after filtering to fit a regression model.")
+    st.warning("Not enough data!")
