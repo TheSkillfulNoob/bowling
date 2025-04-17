@@ -94,7 +94,7 @@ with col2:
 with col3:
     end_date = st.date_input("End Date", value=df['Date'].max())
 
-filtered = df[(df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date))]
+filtered = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
 if location != "All":
     filtered = filtered[filtered['Location'] == location]
 
