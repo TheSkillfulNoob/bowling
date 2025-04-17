@@ -1,4 +1,5 @@
 import gspread
+from scipy import stats
 from google.oauth2.service_account import Credentials
 import pandas as pd
 import streamlit as st
@@ -193,7 +194,6 @@ with col2:
     st.pyplot(fig2)
 
 # Analysis
-# Analysis
 st.subheader("📉 Analysis")
 if len(filtered) >= 5:
     X = filtered[['Spare', 'Strike', 'Pins']]
@@ -210,51 +210,61 @@ if len(filtered) >= 5:
         st.dataframe(model.params.rename("Coefficient").to_frame())
 
     # Helper function for scatter plots
-    def plot_scatter_with_regression(x, y, title, xlabel, color="blue"):
-        fig, ax = plt.subplots()
-
-        # Scatter
-        ax.scatter(x, y, alpha=0.6, color=color, label="Data")
-
-        # Fit linear regression
+    # For regression line with residual plot
+    def plot_residuals_with_fit(x, y, xlabel, color):
         coeffs = np.polyfit(x, y, 1)
         reg_line = np.poly1d(coeffs)
-        x_vals = np.linspace(min(x), max(x), 100)
-        y_vals = reg_line(x_vals)
+        residuals = y - reg_line(x)
 
-        # Plot regression line
-        ax.plot(x_vals, y_vals, color="black", linestyle="--", label="Regression Line")
+        # Dot plot
+        fig1, ax1 = plt.subplots()
+        ax1.scatter(x, y, alpha=0.6, color=color)
+        ax1.plot(np.sort(x), reg_line(np.sort(x)), color="black", linestyle="--")
+        ax1.set_title(f"Total Score vs. {xlabel}")
+        ax1.set_xlabel(xlabel)
+        ax1.set_ylabel("Total Score")
 
-        # Annotate equation
-        slope = coeffs[0]
-        intercept = coeffs[1]
-        ax.text(0.05, 0.95,
-                f"y = {slope:.2f}x + {intercept:.2f}",
-                transform=ax.transAxes,
-                fontsize=9,
-                verticalalignment='top',
-                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="gray"))
+        # Residual plot
+        fig2, ax2 = plt.subplots()
+        ax2.scatter(x, residuals, alpha=0.6, color="gray")
+        ax2.axhline(0, linestyle="--", color="black")
+        ax2.set_title(f"Residuals vs. {xlabel}")
+        ax2.set_xlabel(xlabel)
+        ax2.set_ylabel("Residuals")
 
-        # Labels
-        ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel("Total Score")
-        ax.legend()
-
-        return fig
+        return fig1, fig2
 
     with tab3:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.pyplot(plot_scatter_with_regression(filtered["Strike"], filtered["Total"], "Total Score vs. Strikes", "Strikes"))
-            st.pyplot(plot_scatter_with_regression(filtered["Strike"] + filtered["Spare"], filtered["Total"], "Total Score vs. Bonus Frames", "Strikes + Spares", "green"))
-        with col2:
-            st.pyplot(plot_scatter_with_regression(filtered["Spare"], filtered["Total"], "Total Score vs. Spares", "Spares", "orange"))
-            st.pyplot(plot_scatter_with_regression(filtered["Pins"], filtered["Total"], "Total Score vs. Pins", "Total Pins", "pink"))
+        for metric, color in zip(["Strike", "Bonus", "Pins"], ["blue", "green", "pink"]):
+            col1, col2 = st.columns(2)
+            x_vals = filtered["Strike"] + filtered["Spare"] if metric == "Bonus" else filtered[metric]
+            fig1, fig2 = plot_residuals_with_fit(x_vals, filtered["Total"], metric, color)
+            with col1:
+                st.pyplot(fig1)
+            with col2:
+                st.pyplot(fig2)
 
     with tab4:
         st.markdown("### 🎯 Distribution of Total Scores")
 
+        def plot_hist_with_normal(y):
+            mu, sigma = np.mean(y), np.std(y)
+            fig, ax = plt.subplots()
+            count, bins, ignored = ax.hist(y, bins=15, color="skyblue", edgecolor="black", alpha=0.7, density=True)
+
+            # Normal curve
+            norm_vals = stats.norm.pdf(bins, mu, sigma)
+            ax.plot(bins, norm_vals, 'k--', linewidth=2, label=f"N({mu:.1f}, {sigma**2:.1f})")
+            ax.legend()
+            ax.set_title("Histogram with Normal Fit")
+            ax.set_xlabel("Total Score")
+            ax.set_ylabel("Density")
+            return fig, mu, sigma
+
+        # Summary stats
+        score_summary = filtered["Total"].describe()[["min", "25%", "50%", "75%", "max"]]
+        plot_hist_with_normal(filtered["Total"])[0]
+        
         col1, col2 = st.columns(2)
 
         with col1:
@@ -272,6 +282,12 @@ if len(filtered) >= 5:
             ax_kde.set_xlabel("Total Score")
             ax_kde.set_ylabel("Density")
             st.pyplot(fig_kde)
+            
+        fig_hist, mu, sigma = plot_hist_with_normal(filtered["Total"])
+        st.pyplot(fig_hist)
 
+        # Show summary table below
+        st.markdown("### 🧾 Summary Statistics")
+        st.dataframe(score_summary.to_frame().rename(columns={"Total": "Score"}))
 else:
     st.warning("Not enough data!")
