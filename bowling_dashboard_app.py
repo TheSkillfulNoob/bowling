@@ -98,9 +98,9 @@ def format_avg(series):
 def comparison_emoji(base_val, compare_val):
     if pd.notna(base_val) and pd.notna(compare_val):
         ratio = (compare_val - base_val) / base_val
-        if ratio > 0.05:
+        if ratio > 0.03:
             return " 🟢⬆️"
-        elif ratio < -0.05:
+        elif ratio < -0.03:
             return " 🔴⬇️"
     return ""
 
@@ -113,10 +113,16 @@ avg_5d = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']]
 avg_10d = df[df['Date'].isin(last_10_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
 
 final_overall = format_avg(overall).rename(f"Overall ({df.shape[0]} games)")
-final_max = max_stats.rename("Personal Best")
+final_max = max_stats.rename("Personal Best").to_frame()
+final_max["Out of"] = [
+    f"10",
+    f"12",
+    f"100",
+    f"300 ({(final_max.loc['Total', 'Personal Best'] / 300) * 100:.1f}%)"
+]
 final_avg_5d = format_avg(avg_5d).rename("Last 5 Dates")
 
-emojis_5d = [comparison_emoji(avg_5d[x], avg_10d[x]) for x in avg_5d.index]
+emojis_5d = [comparison_emoji(avg_10d[x], avg_5d[x]) for x in avg_5d.index]
 
 with col1:
     st.markdown("**Overall: Average**")
@@ -125,7 +131,7 @@ with col2:
     st.markdown("**Personal Best**")
     st.dataframe(final_max.to_frame())
 with col3:
-    st.markdown("**Last 5 Dates: Average **")
+    st.markdown("**Moving Average (5 Dates)**")
     st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
 
 # Charts
