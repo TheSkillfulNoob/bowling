@@ -1,6 +1,5 @@
 import gspread
-from gspread_dataframe import set_with_dataframe, get_as_dataframe
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -42,26 +41,26 @@ def validate_toml_secret(): #Sanity check
         st.error(f"❌ Failed to validate credentials: {e}")
         return False
 
-validate_toml_secret()
-st.write("Key starts with:", st.secrets["gcp_service_account"]["private_key"][:30])
-st.write("Key ends with:", st.secrets["gcp_service_account"]["private_key"][-30:])
-print(st.code(st.secrets["gcp_service_account"]["private_key"]))
+# validate_toml_secret()
+# st.write("Key starts with:", st.secrets["gcp_service_account"]["private_key"][:30])
+# st.write("Key ends with:", st.secrets["gcp_service_account"]["private_key"][-30:])
+# print(st.code(st.secrets["gcp_service_account"]["private_key"]))
 
 def connect_to_sheet():
     scope = [
-        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    credentials_dict = st.secrets["gcp_service_account"] # Now with a updating google sheet
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+    credentials_dict = st.secrets["gcp_service_account"]
+    creds = Credentials.from_service_account_info(credentials_dict, scopes=scope)
     client = gspread.authorize(creds)
     sheet = client.open("bowling_db").sheet1
     return sheet
 
 def load_data_from_gsheet():
     sheet = connect_to_sheet()
-    df = get_as_dataframe(sheet)
-    df = df.dropna(subset=["Date"])  # Clean up empty rows
+    df = pd.DataFrame(sheet.get_all_records())
+    df = df.dropna(subset=["Date"])
     df['Date'] = pd.to_datetime(df['Date'], errors="coerce").dt.date
     return df
 
