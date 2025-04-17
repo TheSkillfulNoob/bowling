@@ -8,46 +8,6 @@ from gspread_dataframe import set_with_dataframe
 from datetime import datetime
 import json
 
-# CSV_FILE = "past_games.csv"
-# Load data from CSV
-
-def validate_toml_secret(): #Sanity check
-    try:
-        cred = st.secrets["gcp_service_account"]
-
-        st.write("🔍 Validating credential format...")
-
-        required_keys = [
-            "type", "project_id", "private_key_id", "private_key",
-            "client_email", "client_id", "auth_uri", "token_uri",
-            "auth_provider_x509_cert_url", "client_x509_cert_url"
-        ]
-
-        for key in required_keys:
-            if key not in cred:
-                st.error(f"❌ Missing key: {key}")
-                return False
-            elif not cred[key]:
-                st.error(f"❌ Empty value for: {key}")
-                return False
-
-        if "\\n" not in cred["private_key"]:
-            st.error("❌ private_key does not contain properly escaped '\\n' characters.")
-            return False
-
-        st.success("✅ All required keys found and private_key appears escaped.")
-        return True
-
-    except Exception as e:
-        st.error(f"❌ Failed to validate credentials: {e}")
-        return False
-
-# Debug
-# validate_toml_secret()
-# st.write("Key starts with:", st.secrets["gcp_service_account"]["private_key"][:30])
-# st.write("Key ends with:", st.secrets["gcp_service_account"]["private_key"][-30:])
-# print(st.code(st.secrets["gcp_service_account"]["private_key"]))
-
 # Connect to Google Sheet
 def connect_to_sheet():
     scope = [
@@ -177,7 +137,7 @@ emojis_5d = [comparison_emoji(avg_5d[x], avg_2d[x]) for x in avg_5d.index]
 
 with col1:
     st.markdown("**Overall**")
-    st.dataframe(overall.to_frame())
+    st.dataframe(final_overall.to_frame())
 with col2:
     st.markdown("**Last 50 Games**")
     st.dataframe(final_avg_50.to_frame().assign(Trend=emojis_50))
