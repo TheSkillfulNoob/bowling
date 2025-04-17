@@ -1,4 +1,6 @@
-
+import gspread
+from gspread_dataframe import set_with_dataframe, get_as_dataframe
+from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -8,51 +10,46 @@ from datetime import datetime
 CSV_FILE = "past_games.csv"
 
 # Load data from CSV
-@st.cache_data
-def load_data():
-    df = pd.read_csv(CSV_FILE)
+def connect_to_sheet():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+    client = gspread.authorize(creds)
+    sheet = client.open("bowling_db").sheet1
+    return sheet
 
-    # Parse mixed date formats safely and convert to datetime.date
-    df['Date'] = pd.to_datetime(df['Date'], format='mixed', dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['Date'])  # Remove any unparseable dates
-    df['Date'] = df['Date'].dt.date  # Standardize to date only (drop time)
-    
-    df = df.sort_values(by=['Date', 'Game']).reset_index(drop=True)
+def load_data_from_gsheet():
+    sheet = connect_to_sheet()
+    df = get_as_dataframe(sheet)
+    df = df.dropna(subset=["Date"])  # Clean up empty rows
+    df['Date'] = pd.to_datetime(df['Date'], errors="coerce").dt.date
     return df
 
-# Update the CSV with new game entries
-def update_data(date_str, location_str, games):
-    try:
-        date_parsed = pd.to_datetime(date_str, dayfirst=True).date()
-    except Exception as e:
-        st.error(f"Invalid date format. Use DD/MM/YYYY. Details: {e}")
-        return
+def update_data_to_gsheet(date_str, location_str, games):
+    df = load_data_from_gsheet()
+    date_parsed = pd.to_datetime(date_str, dayfirst=True).date()
 
-    # Create new game entries
     new_rows = []
     for i, g in enumerate(games, 1):
         spare, strike, pins, total = g
         new_rows.append({
-            'Date': date_parsed,
-            'Location': location_str,
-            'Game': i,
-            'Spare': spare,
-            'Strike': strike,
-            'Pins': pins,
-            'Total': total
+            "Date": date_parsed,
+            "Location": location_str,
+            "Game": i,
+            "Spare": spare,
+            "Strike": strike,
+            "Pins": pins,
+            "Total": total
         })
 
-    # Load existing data
-    existing = pd.read_csv(CSV_FILE)
-    existing['Date'] = pd.to_datetime(existing['Date'], format='mixed', dayfirst=True, errors='coerce').dt.date
+    # Drop existing session
+    df = df[~((df["Date"] == date_parsed) & (df["Location"].str.lower() == location_str.lower()))]
 
-    # Remove any prior session on the same date and location (case-insensitive)
-    existing = existing[~((existing['Date'] == date_parsed) & 
-                          (existing['Location'].str.lower() == location_str.lower()))]
+    # Append new
+    updated_df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
 
-    # Append new session
-    combined = pd.concat([existing, pd.DataFrame(new_rows)], ignore_index=True)
-    combined.to_csv(CSV_FILE, index=False)
+    # Write back
+    sheet = connect_to_sheet()
+    set_with_dataframe(sheet, updated_df)
 
     st.success(f"✅ Added new session for {date_parsed} at {location_str} (replacing previous if existed).")
 

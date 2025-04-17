@@ -3,3 +3,6 @@ pandas
 matplotlib
 statsmodels
 seaborn  # for styling
+gspread
+gspread-dataframe
+oauth2client
