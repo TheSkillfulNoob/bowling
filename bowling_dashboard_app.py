@@ -11,6 +11,39 @@ import json
 # CSV_FILE = "past_games.csv"
 # Load data from CSV
 
+def validate_toml_secret(): #Sanity check
+    try:
+        cred = st.secrets["gcp_service_account"]
+
+        st.write("🔍 Validating credential format...")
+
+        required_keys = [
+            "type", "project_id", "private_key_id", "private_key",
+            "client_email", "client_id", "auth_uri", "token_uri",
+            "auth_provider_x509_cert_url", "client_x509_cert_url"
+        ]
+
+        for key in required_keys:
+            if key not in cred:
+                st.error(f"❌ Missing key: {key}")
+                return False
+            elif not cred[key]:
+                st.error(f"❌ Empty value for: {key}")
+                return False
+
+        if "\\n" not in cred["private_key"]:
+            st.error("❌ private_key does not contain properly escaped '\\n' characters.")
+            return False
+
+        st.success("✅ All required keys found and private_key appears escaped.")
+        return True
+
+    except Exception as e:
+        st.error(f"❌ Failed to validate credentials: {e}")
+        return False
+
+validate_toml_secret()
+
 def connect_to_sheet():
     scope = [
         "https://spreadsheets.google.com/feeds",
