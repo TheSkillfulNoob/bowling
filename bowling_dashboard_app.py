@@ -85,7 +85,7 @@ else:
 
 # Statistics
 st.subheader("📊 Statistics")
-col1, col2, col3 = st.columns([3, 4, 5])
+col1, col2, col3 = st.columns([4, 7, 7])
 
 def format_avg(series):
     return pd.Series({
@@ -136,10 +136,10 @@ pb_rows.append([f"{round(max_avg_total, 2)} (300)", avg_pb_date])
 
 final_max = pd.DataFrame(pb_rows, 
     columns=["PB (out of)", "Date"],
-    index=["Spare", "Strike", "Pins", "Total", "Day Avg"]
+    index=["Spare", "Strike", "Pins", "Total", "Day"]
 )
 
-final_avg_5d = format_avg(avg_5d).rename("Last 5 Dates")
+final_avg_5d = format_avg(avg_5d).rename("5MA")
 emojis_5d = [comparison_emoji(avg_10d[x], avg_5d[x]) for x in avg_5d.index]
 
 with col1:
