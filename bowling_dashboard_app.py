@@ -42,10 +42,11 @@ def validate_toml_secret(): #Sanity check
         st.error(f"❌ Failed to validate credentials: {e}")
         return False
 
+# Debug
 # validate_toml_secret()
 # st.write("Key starts with:", st.secrets["gcp_service_account"]["private_key"][:30])
 # st.write("Key ends with:", st.secrets["gcp_service_account"]["private_key"][-30:])
-print(st.code(st.secrets["gcp_service_account"]["private_key"]))
+# print(st.code(st.secrets["gcp_service_account"]["private_key"]))
 
 # Connect to Google Sheet
 def connect_to_sheet():
@@ -99,7 +100,7 @@ st.title("🎳 Bowling Stats Dashboard")
 # Data Entry Section
 st.sidebar.header("➕ Add New Game Session")
 with st.sidebar.form("entry_form", clear_on_submit=False):
-    date_input = st.text_input("Date (DD/MM/YYYY)")
+    date_input = st.date_input("Date")
     location_input = st.text_input("Location")
     num_games = st.number_input("Number of Games", min_value=1, step=1)
 
@@ -114,7 +115,8 @@ with st.sidebar.form("entry_form", clear_on_submit=False):
 
     submitted = st.form_submit_button("Add to Database")
     if submitted:
-        update_data_to_gsheet(date_input, location_input, games_input)
+        formatted_date = date_input.strftime("%Y/%m/%d")
+        update_data_to_gsheet(formatted_date, location_input, games_input)
 
 # Load and filter data
 df = load_data_from_gsheet()
