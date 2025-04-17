@@ -56,8 +56,14 @@ with st.sidebar.form("entry_form", clear_on_submit=False):
          st.number_input(f"Total {i+1}", key=f"to_{i}", min_value=0, max_value=300))
         for i in range(int(num_games))
     ]
-    if st.form_submit_button("Add to Database"):
-        update_data_to_gsheet(date_input, location_input, games_input)
+    write_key = st.text_input("🔐 Write Access Password", type="password")
+    
+    submitted = st.form_submit_button("Add to Database")
+    if submitted:
+        if write_key == st.secrets["access"]["write_password"]:
+            update_data_to_gsheet(date_input, location_input, games_input)
+        else:
+            st.error("🚫 Invalid password. Write access denied.")
         
 # === Load Data and Apply Filters ===
 df = load_data_from_gsheet()
