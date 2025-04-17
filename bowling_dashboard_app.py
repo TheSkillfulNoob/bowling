@@ -43,6 +43,7 @@ def validate_toml_secret(): #Sanity check
         return False
 
 validate_toml_secret()
+print(st.code(st.secrets["gcp_service_account"]["private_key"]))
 
 def connect_to_sheet():
     scope = [
