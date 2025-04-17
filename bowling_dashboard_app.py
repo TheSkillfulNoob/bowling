@@ -55,10 +55,7 @@ def update_data_to_gsheet(date_str, location_str, games):
     st.success(f"✅ Added new session for {date_parsed} at {location_str} (replacing previous if existed).")
 
 # UI
-def header(content):
-    st.markdown(f'<p style="background-color:#0066cc;color:#33ff33;font-size:24px;border-radius:2%;">{content}</p>', unsafe_allow_html=True)
-header("🎳 Bowling Stats Dashboard")
-# st.title("🎳 Bowling Stats Dashboard")
+st.title("🎳 Bowling Stats Dashboard")
 
 st.sidebar.header("➕ Add New Game Session")
 with st.sidebar.form("entry_form", clear_on_submit=False):
