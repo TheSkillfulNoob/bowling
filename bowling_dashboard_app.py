@@ -90,9 +90,9 @@ col1, col2, col3 = st.columns(3)
 with col1:
     location = st.selectbox("Select location (optional)", ["All"] + list(locations))
 with col2:
-    start_date = st.date_input("Start Date", value=df['Date'].min().date())
+    start_date = st.date_input("Start Date", value=df['Date'].min())
 with col3:
-    end_date = st.date_input("End Date", value=df['Date'].max().date())
+    end_date = st.date_input("End Date", value=df['Date'].max())
 
 filtered = df[(df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date))]
 if location != "All":
