@@ -6,13 +6,18 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 from datetime import datetime
+import json
 
-CSV_FILE = "past_games.csv"
-
+# CSV_FILE = "past_games.csv"
 # Load data from CSV
+
 def connect_to_sheet():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    credentials_dict = st.secrets["gcp_service_account"] # Now with a updating google sheet
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
     client = gspread.authorize(creds)
     sheet = client.open("bowling_db").sheet1
     return sheet
