@@ -97,7 +97,6 @@ def update_data_to_gsheet(date_str, location_str, games):
 # UI
 st.title("🎳 Bowling Stats Dashboard")
 
-# Data Entry Section
 st.sidebar.header("➕ Add New Game Session")
 with st.sidebar.form("entry_form", clear_on_submit=False):
     date_input = st.date_input("Date")
@@ -107,18 +106,16 @@ with st.sidebar.form("entry_form", clear_on_submit=False):
     games_input = []
     for i in range(int(num_games)):
         st.markdown(f"**Game {i+1}**")
-        spare = st.number_input(f"Spare {i+1}", key=f"sp_{i}", min_value=0, max_value=10, step=1)
-        strike = st.number_input(f"Strike {i+1}", key=f"st_{i}", min_value=0, max_value=10, step=1)
-        pins = st.number_input(f"Pins {i+1}", key=f"pi_{i}", min_value=0, max_value=100, step=1)
-        total = st.number_input(f"Total {i+1}", key=f"to_{i}", min_value=0, max_value=300, step=1)
+        spare = st.number_input(f"Spare {i+1}", key=f"sp_{i}", min_value=0, max_value=10)
+        strike = st.number_input(f"Strike {i+1}", key=f"st_{i}", min_value=0, max_value=10)
+        pins = st.number_input(f"Pins {i+1}", key=f"pi_{i}", min_value=0, max_value=100)
+        total = st.number_input(f"Total {i+1}", key=f"to_{i}", min_value=0, max_value=300)
         games_input.append((spare, strike, pins, total))
 
     submitted = st.form_submit_button("Add to Database")
     if submitted:
-        formatted_date = date_input.strftime("%Y/%m/%d")
-        update_data_to_gsheet(formatted_date, location_input, games_input)
+        update_data_to_gsheet(date_input, location_input, games_input)
 
-# Load and filter data
 df = load_data_from_gsheet()
 if not df.empty and df['Date'].notna().any():
     start_date_default = df['Date'].min()
@@ -127,7 +124,6 @@ else:
     start_date_default = end_date_default = datetime.today()
 
 locations = df['Location'].dropna().unique()
-
 col1, col2, col3 = st.columns(3)
 with col1:
     location = st.selectbox("Select location (optional)", ["All"] + list(locations))
@@ -144,24 +140,44 @@ if location != "All":
 st.subheader("📊 Averages")
 col1, col2, col3 = st.columns(3)
 
-overall = df[['Spare', 'Strike', 'Pins', 'Total']].mean().rename("Overall")
-last_50 = df.tail(50)[['Spare', 'Strike', 'Pins', 'Total']].mean().rename("Last 50 Games")
-last_5_dates = df['Date'].drop_duplicates().sort_values(ascending=False).head(5)
-last_5 = df[df['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean().rename("Last 5 Dates")
+def format_avg(df):
+    return df.round({"Spare": 3, "Strike": 3, "Pins": 2, "Total": 2})
+
+def comparison_emoji(base_val, compare_val):
+    if pd.notna(base_val) and pd.notna(compare_val):
+        ratio = (compare_val - base_val) / base_val
+        if ratio > 0.02:
+            return " 🟢⬆️"
+        elif ratio < -0.02:
+            return " 🔴⬇️"
+    return ""
+
+last_50 = filtered.tail(50)
+last_20 = filtered.tail(20)
+last_5_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(5)
+last_2_dates = filtered['Date'].drop_duplicates().sort_values(ascending=False).head(2)
+
+avg_50 = last_50[['Spare', 'Strike', 'Pins', 'Total']].mean()
+avg_20 = last_20[['Spare', 'Strike', 'Pins', 'Total']].mean()
+avg_5d = filtered[filtered['Date'].isin(last_5_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
+avg_2d = filtered[filtered['Date'].isin(last_2_dates)][['Spare', 'Strike', 'Pins', 'Total']].mean()
+
+final_avg_50 = format_avg(avg_50).rename("Last 50 Games")
+final_avg_5d = format_avg(avg_5d).rename("Last 5 Dates")
+
+emojis_50 = [comparison_emoji(avg_50[x], avg_20[x]) for x in avg_50.index]
+emojis_5d = [comparison_emoji(avg_5d[x], avg_2d[x]) for x in avg_5d.index]
 
 with col1:
-    st.markdown("**Overall**")
-    st.dataframe(overall.to_frame())
-with col2:
     st.markdown("**Last 50 Games**")
-    st.dataframe(last_50.to_frame())
-with col3:
+    st.dataframe(final_avg_50.to_frame().assign(Trend=emojis_50))
+with col2:
     st.markdown("**Last 5 Dates**")
-    st.dataframe(last_5.to_frame())
+    st.dataframe(final_avg_5d.to_frame().assign(Trend=emojis_5d))
 
 # Charts
 st.subheader("📈 Trends Over Time")
-avg_by_date = df.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
+avg_by_date = filtered.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
 
 col1, col2 = st.columns(2)
 with col1:
@@ -169,6 +185,8 @@ with col1:
     avg_by_date[['Spare', 'Strike']].plot(marker='o', ax=ax1)
     ax1.set_title("Spare & Strike")
     ax1.set_ylabel("Count")
+    ax1.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
+    ax1.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
     st.pyplot(fig1)
 
 with col2:
@@ -176,6 +194,8 @@ with col2:
     avg_by_date[['Pins', 'Total']].plot(marker='o', ax=ax2)
     ax2.set_title("Pins & Total")
     ax2.set_ylabel("Score")
+    ax2.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
+    ax2.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
     st.pyplot(fig2)
 
 # Regression
