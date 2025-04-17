@@ -43,6 +43,8 @@ def validate_toml_secret(): #Sanity check
         return False
 
 validate_toml_secret()
+st.write("Key starts with:", st.secrets["gcp_service_account"]["private_key"][:30])
+st.write("Key ends with:", st.secrets["gcp_service_account"]["private_key"][-30:])
 print(st.code(st.secrets["gcp_service_account"]["private_key"]))
 
 def connect_to_sheet():
