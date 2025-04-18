@@ -144,8 +144,8 @@ if len(filtered) >= 5:
             avg_by_date[['Spare', 'Strike']].plot(marker='o', ax=ax1)
             ax1.set_title("Spare & Strike")
             ax1.set_ylabel("Count")
-            ax1.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
-            ax1.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
+            # ax1.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
+            # ax1.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
             st.pyplot(fig1)
         with col2:
             fig2, ax2 = plt.subplots()
