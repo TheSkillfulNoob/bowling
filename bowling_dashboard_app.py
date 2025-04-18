@@ -134,38 +134,49 @@ if len(filtered) >= 5:
     model = sm.OLS(y, X).fit()
 
     tab_ts, tab_scorestats, tab_dotplot, tab_regression = st.tabs(["📈 Time Series and Dist.", "🎯 Key Statistics", "📊 Dot Plots", "📜 Reg. Summary"])
-
     with tab_ts:
         st.subheader("📈 Time Series Trends")
+
         avg_by_date = filtered.groupby('Date')[['Spare', 'Strike', 'Pins', 'Total']].mean()
+        dates = avg_by_date.index
+        x = np.arange(len(dates))  # Evenly spaced integers
+
+        date_labels = [d.strftime("%d/%m") for d in dates]
+
         col1, col2 = st.columns(2)
+
         with col1:
             fig1, ax1 = plt.subplots()
-            avg_by_date[['Spare', 'Strike']].plot(marker='o', ax=ax1)
+            ax1.plot(x, avg_by_date['Spare'], marker='o', label='Spare')
+            ax1.plot(x, avg_by_date['Strike'], marker='o', label='Strike')
             ax1.set_title("Spare & Strike")
             ax1.set_ylabel("Count")
-            # ax1.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
-            # ax1.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
+            ax1.set_xticks(np.linspace(0, len(dates) - 1, 5, dtype=int))  # 5 evenly spaced ticks
+            ax1.set_xticklabels([date_labels[i] for i in np.linspace(0, len(dates) - 1, 5, dtype=int)], rotation=45)
+            ax1.legend()
             st.pyplot(fig1)
+
         with col2:
             fig2, ax2 = plt.subplots()
-            avg_by_date[['Pins', 'Total']].plot(marker='o', ax=ax2)
+            ax2.plot(x, avg_by_date['Pins'], marker='o', label='Pins')
+            ax2.plot(x, avg_by_date['Total'], marker='o', label='Total')
             ax2.set_title("Pins & Total")
             ax2.set_ylabel("Score")
-            ax2.set_xticks(avg_by_date.index[::max(1, len(avg_by_date)//5)])
-            ax2.set_xticklabels([d.strftime("%d/%m") for d in avg_by_date.index[::max(1, len(avg_by_date)//5)]], rotation=45)
+            ax2.set_xticks(np.linspace(0, len(dates) - 1, 5, dtype=int))
+            ax2.set_xticklabels([date_labels[i] for i in np.linspace(0, len(dates) - 1, 5, dtype=int)], rotation=45)
+            ax2.legend()
             st.pyplot(fig2)
-        
-        st.subheader("📊 Histogram and Normal Density Plot")
-        col1, col2 = st.columns(2)
-        with col1:
-            fig, mu, sigma = plot_hist_with_normal(filtered["Total"])
-            st.pyplot(fig)
-        with col2:
-            fig_kde, ax = plt.subplots()
-            sns.kdeplot(filtered["Total"], fill=True, ax=ax, color="purple")
-            ax.set_title("KDE of Total Scores")
-            st.pyplot(fig_kde)
+            
+            st.subheader("📊 Histogram and Normal Density Plot")
+            col1, col2 = st.columns(2)
+            with col1:
+                fig, mu, sigma = plot_hist_with_normal(filtered["Total"])
+                st.pyplot(fig)
+            with col2:
+                fig_kde, ax = plt.subplots()
+                sns.kdeplot(filtered["Total"], fill=True, ax=ax, color="purple")
+                ax.set_title("KDE of Total Scores")
+                st.pyplot(fig_kde)
         
     with tab_scorestats:
         st.markdown("### 🧾 Score Summary")
