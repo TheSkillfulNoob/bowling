@@ -234,7 +234,7 @@ if len(filtered) >= 5:
             with col2: st.pyplot(fig2)
 
     with tab_regression:
-        X = sm.add_constant(filtered[["Spare", "Strike", "Pins"]])
+        X = sm.add_constant(filtered[["Spare", "Strike"]])
         y = filtered["Total"]
         model = sm.OLS(y, X).fit()
         st.text(model.summary())
