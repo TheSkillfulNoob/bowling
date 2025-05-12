@@ -16,10 +16,11 @@ def connect_to_sheet():
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
+    
     credentials_dict = st.secrets["gcp_service_account"]
     creds = Credentials.from_service_account_info(credentials_dict, scopes=scope)
     client = gspread.authorize(creds)
-    return client.open("bowling_db").sheet1
+    return client.open("v4_resources").worksheet("Bowling")
 
 def load_data_from_gsheet():
     sheet = connect_to_sheet()
