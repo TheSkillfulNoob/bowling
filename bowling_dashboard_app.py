@@ -31,7 +31,7 @@ def load_data_from_gsheet():
 
 def update_data_to_gsheet(date_str, location_str, games):
     df = load_data_from_gsheet()
-    date_parsed = pd.to_datetime(date_str, dayfirst=True).date()
+    date_parsed = pd.to_datetime(date_str, dayfirst=True).date().strftime("%m/%d/%Y")
     new_rows = [
         {"Date": date_parsed, "Location": location_str, "Game": i+1, "Spare": g[0], "Strike": g[1], "Pins": g[2], "Total": g[3]}
         for i, g in enumerate(games)
