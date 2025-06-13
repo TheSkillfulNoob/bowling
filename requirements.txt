@@ -1,10 +1,11 @@
 streamlit
 pandas
+cv2
 matplotlib
 statsmodels
 seaborn  # for styling
 gspread
 gspread-dataframe
 oauth2client
-opencv-python
+opencv-python-headless
 pytesseract
