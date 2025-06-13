@@ -1,6 +1,6 @@
 import streamlit as st
 from PIL     import Image
-from ocr_pipeline.ocr import run_pipeline
+from result_ocr.ocr import run_pipeline
 import pandas as pd
 
 st.set_page_config("Bowling OCR Review")
