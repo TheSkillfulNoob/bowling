@@ -134,7 +134,7 @@ if len(filtered) >= 5:
     y = filtered['Total']
     model = sm.OLS(y, X).fit()
 
-    tab_ts, tab_scorestats, tab_dotplot, tab_regression = st.tabs(["📈 Time Series and Dist.", "🎯 Key Statistics", "📊 Dot Plots", "📜 Reg. Summary"])
+    tab_ts, tab_ocr, tab_scorestats, tab_dotplot, tab_regression = st.tabs(["📈 Time Series and Dist.", "✏️ OCR Review", "🎯 Key Statistics", "📊 Dot Plots", "📜 Reg. Summary"])
     with tab_ts:
         st.subheader("📈 Time Series Trends")
 
@@ -181,7 +181,10 @@ if len(filtered) >= 5:
             sns.kdeplot(filtered["Total"], fill=True, ax=ax, color="purple")
             ax.set_title("KDE of Total Scores")
             st.pyplot(fig_kde)
-        
+    
+    with tab_ocr:
+        import streamlit_ocr_ui  # simply reruns that script in the tab
+    
     with tab_scorestats:
         st.markdown("### 🧾 Score Summary")
         desc = filtered['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
