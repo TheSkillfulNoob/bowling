@@ -6,3 +6,5 @@ seaborn  # for styling
 gspread
 gspread-dataframe
 oauth2client
+opencv-python
+pytesseract
