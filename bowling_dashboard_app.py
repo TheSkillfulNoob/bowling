@@ -5,6 +5,8 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
+import cv2
+from PIL import Image
 import seaborn as sns
 import numpy as np
 from gspread_dataframe import set_with_dataframe
@@ -182,9 +184,43 @@ if len(filtered) >= 5:
             ax.set_title("KDE of Total Scores")
             st.pyplot(fig_kde)
     
-    #with tab_ocr:
-    #    import streamlit_ocr_ui  # simply reruns that script in the tab
-    
+    # === OCR Review Tab ===
+    with tab_ocr:
+        st.subheader("✏️ OCR Review")
+
+        # 1) Upload a cropped row image
+        uploaded = st.file_uploader("Upload a *cropped* row image", type=["png", "jpg", "jpeg"])
+        if not uploaded:
+            st.info("Please upload a row crop from your phone.")
+        else:
+            # 2) Run the pipeline
+            # — you already have result_ocr in your PYTHONPATH by having __init__.py
+            from result_ocr.ocr import run_pipeline
+            img = Image.open(uploaded)
+            # convert PIL→BGR OpenCV format
+            bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            pred = run_pipeline(bgr)
+
+            # 3) Build DataFrame & let user correct
+            df_ocr = pd.DataFrame({
+                "Frame": list(range(1, 11)),
+                "Predicted": pred,
+                "Corrected": pred[:]      # initialize same
+            })
+            edited = st.experimental_data_editor(df_ocr, num_rows="fixed")
+
+            # 4) Highlight mismatches
+            def _highlight(row):
+                return ["background-color: pink" if row.Predicted != row.Corrected else "" for _ in row]
+            st.dataframe(edited.style.apply(_highlight, axis=1), use_container_width=True)
+
+            # 5) On submit, write back to **Bowling-full** sheet
+            if st.button("Submit ground truth"):
+                # re-use your connect_to_sheet() to get the parent spreadsheet
+                wb    = connect_to_sheet().parent
+                sheet = wb.worksheet("Bowling-full")   # match the exact tab name
+                set_with_dataframe(sheet, edited)
+                st.success("✅ Uploaded corrected frames to 'Bowling-full'")
     with tab_scorestats:
         st.markdown("### 🧾 Score Summary")
         desc = filtered['Total'].describe()[["min", "25%", "50%", "75%", "max"]]
