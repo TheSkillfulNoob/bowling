@@ -182,8 +182,8 @@ if len(filtered) >= 5:
             ax.set_title("KDE of Total Scores")
             st.pyplot(fig_kde)
     
-    with tab_ocr:
-        import streamlit_ocr_ui  # simply reruns that script in the tab
+    #with tab_ocr:
+    #    import streamlit_ocr_ui  # simply reruns that script in the tab
     
     with tab_scorestats:
         st.markdown("### 🧾 Score Summary")
