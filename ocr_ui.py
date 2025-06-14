@@ -35,6 +35,7 @@ def compute_bowling_stats(frames):
                 bonus_pins = 10 - rolls[-1]
             else:
                 bonus_pins = (int(c) if c.isdigit() else 0)
+            rolls.append(bonus_pins)
 
     total_score, strikes, spares = 0, 0, 0
     for i, fr in enumerate(frames):
@@ -59,10 +60,10 @@ def compute_bowling_stats(frames):
             total_score += sum(rolls[idx: idx+count])
 
     return {
-        "Total":    total_score + bonus_pins,
+        "Total":    total_score,
         "Strikes":  strikes,
         "Spares":   spares,
-        "Pins":     sum(rolls)
+        "Pins":     sum(rolls) - bonus_pins
     }
 
 def get_data_editor():
