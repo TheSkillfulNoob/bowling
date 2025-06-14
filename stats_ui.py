@@ -16,17 +16,17 @@ def stats_tabs():
     end     = st.sidebar.date_input("End Date", dmax)
     filt    = filter_sessions(df, start, end, loc)
 
-    # Create three sub-tabs
+    # Create four sub-tabs
     tab_trends, tab_dist, tab_summary, tab_pb = st.tabs([
         "📈 Trends",
         "📊 Distributions",
-        "🧾 Summary"
+        "🧾 Summary",
         "🏆 PBs"
     ])
 
     # --- Tab 1: Trends ---
     with tab_trends:
-        st.subheader("Trends: Spare & Strike  ↔  Pins & Total")
+        st.subheader("Time Series Trends")
         avg_by_date = filt.groupby("Date")[["Spare","Strike","Pins","Total"]].mean()
         dates = avg_by_date.index
 
@@ -97,6 +97,7 @@ def stats_tabs():
 
     # --- Tab 4: Personal Bests ---
     with tab_pb:
+        st.subheader("Personal Bests")
         pb = []
         for metric, max_possible in zip(
             ["Spare","Strike","Pins","Total"], [10,12,100,300]
