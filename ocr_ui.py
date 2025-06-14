@@ -68,9 +68,13 @@ def session_input_tab():
     st.subheader("➕ Input with OCR Review")
 
     # 1) Metadata
-    date   = st.date_input("Date")
-    loc    = st.text_input("Location")
-    game_n = st.number_input("Game number", min_value=1, step=1)
+    cols_metadata = st.columns(3)
+    with cols_metadata[0]:
+        date   = st.date_input("Date")
+    with cols_metadata[1]:
+        loc    = st.text_input("Location")
+    with cols_metadata[2]:
+        game_n = st.number_input("Game number", min_value=1, step=1)
 
     # 2) Upload & preview frames
     uploaded = st.file_uploader("Upload a cropped row image", type=["png","jpg","jpeg"])
