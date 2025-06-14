@@ -7,7 +7,7 @@ from data import load_sessions, filter_sessions
 import pandas as pd
 
 st.set_page_config("🎳 Bowling Dashboard")
-st.title("🎳 Andrew's Bowling Dashboard")
+st.title("🎳 Andrew's Bowling Tracker")
 
 # Tab: add session
 tabs = st.tabs(["➕ Add Session","📈 Stats","📊 Regression","✏️ OCR Review"])
