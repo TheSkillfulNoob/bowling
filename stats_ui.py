@@ -17,10 +17,11 @@ def stats_tabs():
     filt    = filter_sessions(df, start, end, loc)
 
     # Create three sub-tabs
-    tab_trends, tab_dist, tab_summary = st.tabs([
+    tab_trends, tab_dist, tab_summary, tab_pb = st.tabs([
         "📈 Trends",
         "📊 Distributions",
         "🧾 Summary"
+        "🏆 PBs"
     ])
 
     # --- Tab 1: Trends ---
@@ -94,7 +95,8 @@ def stats_tabs():
         ]
         st.table(df_ma)
 
-        # 3) Personal Bests
+    # --- Tab 4: Personal Bests ---
+    with tab_pb:
         pb = []
         for metric, max_possible in zip(
             ["Spare","Strike","Pins","Total"], [10,12,100,300]
@@ -103,5 +105,5 @@ def stats_tabs():
             best_date = df[df[metric]==best_val]["Date"].iloc[0].strftime("%d/%m/%Y")
             pb.append((metric, f"{best_val} / {max_possible}", best_date))
 
-        pb_df = pd.DataFrame(pb, columns=["Metric","Best (out of)","Date"])
+        pb_df = pd.DataFrame(pb, columns=["Metric","Best (out of)","Date"], index = False)
         st.table(pb_df)
