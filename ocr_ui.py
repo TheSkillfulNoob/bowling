@@ -110,7 +110,7 @@ def session_input_tab():
         index=["Frame","Predicted","Corrected"],
         columns=cols10
     )
-    editor = getattr(st, "data_editor", st.experimental_data_editor)
+    editor = get_data_editor()
     edited = editor(df_wide)
     # 4) Compute Totals in one row of metrics
     if st.button("Compute Totals"):
