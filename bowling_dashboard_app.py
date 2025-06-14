@@ -200,13 +200,14 @@ if len(filtered) >= 5:
             # convert PIL→BGR OpenCV format
             bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
             pred = run_pipeline(bgr)
-            st.image(img, width=400)
+
             # 3) Build DataFrame & let user correct
             df_ocr = pd.DataFrame({
                 "Frame": list(range(1, 11)),
                 "Predicted": pred,
                 "Corrected": pred[:]      # initialize same
             })
+
             if hasattr(st, "data_editor"):
                 _editor = st.data_editor
             elif hasattr(st, "experimental_data_editor"):
@@ -222,12 +223,6 @@ if len(filtered) >= 5:
                 st.warning("↪️ No editable table API available; showing static preview.")
                 st.dataframe(df_ocr)
                 edited = df_ocr
-
-
-            # 4) Highlight mismatches
-            def _highlight(row):
-                return ["background-color: pink" if row.Predicted != row.Corrected else "" for _ in row]
-            st.dataframe(edited.style.apply(_highlight, axis=1), use_container_width=True)
 
             # 5) On submit, write back to **Bowling-full** sheet
             if st.button("Submit ground truth"):
