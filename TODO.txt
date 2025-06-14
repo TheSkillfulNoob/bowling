@@ -1,0 +1,3 @@
+Handle OCR to image (Sheets: Bowling-full) to replace "Add Session"
+Handle Score-statistics Write-in (Score conversion and output - Spare Strike Pins Total)
+Professional Analysis Module (Strike rate, Spare conversion Rate, Bonuses)

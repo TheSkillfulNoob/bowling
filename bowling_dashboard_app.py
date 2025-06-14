@@ -6,7 +6,7 @@ from sheets import push_session_data
 from data import load_sessions, filter_sessions
 import pandas as pd
 
-st.set_page_config("🎳 Bowling Dashboard")
+st.set_page_config("Andrew's 🎳 Dashboard")
 st.title("🎳 Andrew's Bowling Tracker")
 
 # Tab: add session
