@@ -110,15 +110,8 @@ def session_input_tab():
         index=["Frame","Predicted","Corrected"],
         columns=cols10
     )
-    editor = get_data_editor()
+    editor = getattr(st, "data_editor", st.experimental_data_editor)
     edited = editor(df_wide)
-
-    # Highlight the Corrected row (after editing) in a separate display
-    styled = edited.style.set_properties(
-        **{"background-color": "lightblue"},
-        subset=pd.IndexSlice["Corrected", :]
-    )
-    st.dataframe(styled, use_container_width=True)
 
     # 4) Compute Totals in one row of metrics
     if st.button("Compute Totals"):
