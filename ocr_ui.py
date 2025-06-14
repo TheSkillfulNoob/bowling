@@ -95,33 +95,25 @@ def session_input_tab():
     row = crop_row(bgr)
     clean = remove_red_circles(row)
     frames = split_frames(clean)
-
     cols = st.columns(10)
-    for i, f in enumerate(frames):
+    for i,f in enumerate(frames):
         with cols[i]:
-            st.image(to_gray(f), use_container_width = True, clamp = True)
+            st.image(to_gray(f), clamp=True)
             st.caption(f"F{i+1}")
 
-    # 3) OCR + 3×10 editable table
+    # OCR
     preds = run_pipeline(bgr)
-    cols10 = [f"F{i}" for i in range(1,11)]
-    df_wide = pd.DataFrame(
-        [list(range(1,11)), preds, preds],
-        index=["Frame","Predicted","Corrected"],
-        columns=cols10
-    )
-# Use Streamlit’s data_editor so users can modify any cell
-# and make sure the row-index (Frame/Predicted/Corrected) is not hidden
+    df = pd.DataFrame({"Frame":range(1,11),"Predicted":preds,"Corrected":preds[:]})
     if hasattr(st, "data_editor"):
         edited = st.data_editor(
-            df_wide,
+            df,
             num_rows="fixed",
             use_container_width=True,
             hide_index=False
         )
     else:
         edited = st.experimental_data_editor(
-            df_wide,
+            df,
             num_rows="fixed",
             use_container_width=True
         )
