@@ -11,6 +11,7 @@ def compute_bowling_stats(frames):
     # Build flat list of roll scores + frame start indices
     rolls = []
     frame_starts = []
+    bonus_pins = 0
     for fr in frames:
         frame_starts.append(len(rolls))
         if fr == "X":
@@ -25,7 +26,15 @@ def compute_bowling_stats(frames):
                 rolls.append(10 - rolls[-1])
             else:
                 rolls.append(int(b) if b.isdigit() else 0)
-        # third roll in F10 does NOT count total pins
+        # tenth frame can have a third roll
+        if len(fr) == 3:
+            c = fr[2]
+            if c == "X":
+                bonus_pins = 10
+            elif c == "/":
+                bonus_pins = 10 - rolls[-1]
+            else:
+                bonus_pins = (int(c) if c.isdigit() else 0)
 
     total_score, strikes, spares = 0, 0, 0
     for i, fr in enumerate(frames):
@@ -50,7 +59,7 @@ def compute_bowling_stats(frames):
             total_score += sum(rolls[idx: idx+count])
 
     return {
-        "Total":    total_score,
+        "Total":    total_score + bonus_pins,
         "Strikes":  strikes,
         "Spares":   spares,
         "Pins":     sum(rolls)
