@@ -120,7 +120,7 @@ def session_input_tab():
     
     # 4) Compute Totals in one row of metrics
     if st.button("Compute Totals"):
-        final = edited.loc["Corrected"].tolist()
+        final = edited["Corrected"].tolist()
         stats = compute_bowling_stats(final)
         stats["Date"], stats["Location"], stats["Game"] = (
             date.strftime("%Y-%m-%d"), loc, int(game_n)
