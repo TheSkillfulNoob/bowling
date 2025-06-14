@@ -1,0 +1,33 @@
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from scipy import stats
+
+def plot_time_series(df: pd.DataFrame) -> plt.Figure:
+    fig, ax = plt.subplots()
+    df.plot(marker="o", ax=ax)
+    ax.set_ylabel("Value")
+    return fig
+
+def plot_hist_with_normal(y) -> tuple[plt.Figure, float, float]:
+    mu, sigma = y.mean(), y.std()
+    fig, ax1 = plt.subplots()
+    counts, bins, _ = ax1.hist(y, bins=20, alpha=0.7, color="skyblue", edgecolor="black")
+    ax2 = ax1.twinx()
+    ax2.plot(bins, stats.norm.pdf(bins, mu, sigma), 'k--')
+    ax2.set_ylabel("Density")
+    return fig, mu, sigma
+
+def plot_kde(y) -> plt.Figure:
+    fig, ax = plt.subplots()
+    sns.kdeplot(y, fill=True, ax=ax)
+    return fig
+
+def plot_residuals(x, y, label: str, color: str) -> plt.Figure:
+    coeffs = np.polyfit(x, y, 1)
+    line = np.poly1d(coeffs)
+    fig, ax = plt.subplots()
+    ax.scatter(x, y, alpha=0.6, color=color)
+    ax.plot(np.sort(x), line(np.sort(x)), 'k--')
+    ax.set(title=f"Total vs {label}", xlabel=label, ylabel="Total")
+    return fig
