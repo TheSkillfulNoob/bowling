@@ -67,9 +67,9 @@ def compute_bowling_stats(frames):
 def get_data_editor():
     """Picks the available Streamlit editor API."""
     if hasattr(st, "data_editor"):
-        return st.data_editor
+        return st.data_editor(num_rows="fixed", use_container_width=True, hide_index=False)
     if hasattr(st, "experimental_data_editor"):
-        return st.experimental_data_editor
+        return st.experimental_data_editor(num_rows="fixed", use_container_width=True)
     return None
 
 def session_input_tab():
