@@ -8,107 +8,136 @@ from result_ocr.preprocess import to_gray, remove_red_circles
 from result_ocr.segment   import crop_row, split_frames
 
 def compute_bowling_stats(frames):
-    rolls, strikes, spares = [], 0, 0
+    # Build flat list of roll scores + frame start indices
+    rolls = []
+    frame_starts = []
     for fr in frames:
+        frame_starts.append(len(rolls))
         if fr == "X":
-            rolls.append(10); strikes += 1
-        elif "/" in fr:
-            first = int(fr[0])
-            rolls += [first, 10 - first]; spares += 1
+            rolls.append(10)
         else:
-            a,b = fr[0], fr[1]
-            rolls += [
-                int(a) if a.isdigit() else 0,
-                int(b) if b.isdigit() else 0
-            ]
-    total = sum(rolls)
-    return {"Date": None, "Location": None, "Game": None,
-            "Total": total, "Pins": total,
-            "Strikes": strikes, "Spares": spares}
+            # first roll
+            a = fr[0]
+            rolls.append(int(a) if a.isdigit() else 0)
+            # second roll
+            b = fr[1]
+            if b == "/":
+                rolls.append(10 - rolls[-1])
+            else:
+                rolls.append(int(b) if b.isdigit() else 0)
+        # tenth frame can have a third roll
+        if len(fr) == 3:
+            c = fr[2]
+            if c == "X":
+                rolls.append(10)
+            elif c == "/":
+                rolls.append(10 - rolls[-1])
+            else:
+                rolls.append(int(c) if c.isdigit() else 0)
+
+    total_score, strikes, spares = 0, 0, 0
+    for i, fr in enumerate(frames):
+        idx = frame_starts[i]
+        # Strike
+        if fr == "X":
+            strikes += 1
+            total_score += 10
+            # bonus next two rolls
+            if idx+1 < len(rolls): total_score += rolls[idx+1]
+            if idx+2 < len(rolls): total_score += rolls[idx+2]
+        # Spare (but not strike)
+        elif "/" in fr:
+            spares += 1
+            total_score += 10
+            # bonus next one roll
+            if idx+2 < len(rolls): total_score += rolls[idx+2]
+        else:
+            # Open frame or 10th frame leftover
+            # count how many rolls this frame contributed
+            count = 1 if fr=="X" else (2 if len(fr)==2 else 3)
+            total_score += sum(rolls[idx: idx+count])
+
+    return {
+        "Total":    total_score,
+        "Strikes":  strikes,
+        "Spares":   spares,
+        "Pins":     sum(rolls)
+    }
 
 def session_input_tab():
-    """Renders the entire ➕ Add Session flow."""
     st.subheader("➕ Input with OCR Review")
 
-    # ─── Metadata ───────────────────────────────────────────────
+    # 1) Metadata
     date   = st.date_input("Date")
     loc    = st.text_input("Location")
     game_n = st.number_input("Game number", min_value=1, step=1)
 
-    # ─── File Upload & Frame Preview ───────────────────────────
-    uploaded = st.file_uploader("Upload a *cropped* row image", type=["png","jpg","jpeg"])
+    # 2) Upload & preview frames
+    uploaded = st.file_uploader("Upload a cropped row image", type=["png","jpg","jpeg"])
     if not uploaded:
-        st.info("Please upload a row-crop image.")
+        st.info("Please upload a row‐crop.")
         return
 
-    # load & deskew inside run_pipeline if you like,
-    # but here we just preview the raw frames:
     pil = Image.open(uploaded)
     bgr = cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
     row = crop_row(bgr)
-    cleaned = remove_red_circles(row)
-    frames = split_frames(cleaned)
+    clean = remove_red_circles(row)
+    frames = split_frames(clean)
 
     cols = st.columns(10)
     for i, f in enumerate(frames):
         with cols[i]:
-            st.image(to_gray(f), use_container_width = True, clamp = True)
+            st.image(to_gray(f), use_column_width=True, clamp=True)
             st.caption(f"F{i+1}")
 
-    # ─── OCR + Editable Table ───────────────────────────────────
+    # 3) OCR + 3×10 editable table
     preds = run_pipeline(bgr)
-    df = pd.DataFrame({
-        "Frame":     list(range(1,11)),
-        "Predicted": preds,
-        "Corrected": preds[:]   # initial copy
-    })
-    if hasattr(st, "data_editor"):
-        editor = st.data_editor
-    elif hasattr(st, "experimental_data_editor"):
-        editor = st.experimental_data_editor
-    else:
-        editor = None  # no editor available
-    edited = editor(df)
+    cols10 = [f"F{i}" for i in range(1,11)]
+    df_wide = pd.DataFrame(
+        [list(range(1,11)), preds, preds],
+        index=["Frame","Predicted","Corrected"],
+        columns=cols10
+    )
+    editor = getattr(st, "data_editor", st.experimental_data_editor)
+    edited = editor(df_wide)
 
-    # ─── Compute Totals ────────────────────────────────────────
+    # Highlight the Corrected row (after editing) in a separate display
+    styled = edited.style.apply(
+        lambda row: ["background-color: lightblue"]*10 if row.name=="Corrected" else [""*10],
+        axis=1
+    )
+    st.dataframe(styled, use_container_width=True)
+
+    # 4) Compute Totals in one row of metrics
     if st.button("Compute Totals"):
-        final_frames = edited["Corrected"].tolist()
-        stats = compute_bowling_stats(final_frames)
-        # override metadata
+        final = edited.loc["Corrected"].tolist()
+        stats = compute_bowling_stats(final)
         stats["Date"], stats["Location"], stats["Game"] = (
             date.strftime("%Y-%m-%d"), loc, int(game_n)
         )
-        st.metric("🏆 Total Score", stats["Total"])
-        st.metric("💥 Strikes",     stats["Strikes"])
-        st.metric("🔄 Spares",      stats["Spares"])
-        st.metric("🎳 Pins",        stats["Pins"])
-        # stash for submit
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🏆 Total Score", f"{stats['Total']}")
+        c2.metric("💥 Strikes",     f"{stats['Strikes']}")
+        c3.metric("🔄 Spares",      f"{stats['Spares']}")
+        c4.metric("🎳 Pins",        f"{stats['Pins']}")
         st.session_state["ocr_stats"]  = stats
-        st.session_state["ocr_frames"] = final_frames
+        st.session_state["ocr_frames"] = final
 
-    # ─── Submit Session ────────────────────────────────────────
+    # 5) Submit both session and detailed frames
     if st.session_state.get("ocr_stats") and st.button("Submit Session"):
         s = st.session_state["ocr_stats"]
-        # 1) aggregate row to Bowling
-        row_df = pd.DataFrame([{
+        # aggregate to Bowling
+        push_session_data(pd.DataFrame([{
             "Date":     s["Date"],
             "Location": s["Location"],
             "Game":     s["Game"],
             "Total":    s["Total"],
             "Pins":     s["Pins"],
             "Strikes":  s["Strikes"],
-            "Spares":   s["Spares"],
-        }])
-        push_session_data(row_df)
-
-        # 2) detailed frames to Bowling-full
-        frames_dict = {f"F{i+1}": f for i, f in enumerate(st.session_state["ocr_frames"])}
-        detail_df = pd.DataFrame([{
-            "Date":     s["Date"],
-            "Location": s["Location"],
-            "Game":     s["Game"],
-            **frames_dict
-        }])
-        push_ground_truth(detail_df)
-
-        st.success("✅ Session & frames saved to Google Sheets!")
+            "Spares":   s["Spares"]
+        }]))
+        # detailed to Bowling-full
+        detail = {"Date":s["Date"],"Location":s["Location"],"Game":s["Game"]}
+        detail.update({f"F{i+1}":f for i,f in enumerate(st.session_state["ocr_frames"])})
+        push_ground_truth(pd.DataFrame([detail]))
+        st.success("✅ Session saved!")
