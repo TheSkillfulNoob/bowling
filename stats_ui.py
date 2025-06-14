@@ -106,5 +106,5 @@ def stats_tabs():
             best_date = df[df[metric]==best_val]["Date"].iloc[0].strftime("%d/%m/%Y")
             pb.append((metric, f"{best_val} / {max_possible}", best_date))
 
-        pb_df = pd.DataFrame(pb, columns=["Metric","Best (out of)","Date"], index = False)
+        pb_df = pd.DataFrame(pb, columns=["Metric","Best (out of)","Date"])
         st.table(pb_df)
