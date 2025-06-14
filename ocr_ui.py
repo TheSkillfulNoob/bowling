@@ -148,7 +148,38 @@ def session_input_tab():
             "Spares":   s["Spares"]
         }]))
         # detailed to Bowling-full
-        detail = {"Date":s["Date"],"Location":s["Location"],"Game":s["Game"]}
-        detail.update({f"F{i+1}":f for i,f in enumerate(st.session_state["ocr_frames"])})
-        push_ground_truth(pd.DataFrame([detail]))
+        frames = st.session_state["ocr_frames"]
+        rolls = []
+        # frames 1–9: exactly 2 rolls each
+        for fr in frames[:9]:
+            if fr == "X":
+                # strike → 10 pins on first roll, blank second roll
+                rolls += ["X", ""]
+            elif "/" in fr:
+                rolls += [fr[0], "/"]
+            else:
+                a = fr[0] if len(fr) > 0 else ""
+                b = fr[1] if len(fr) > 1 else ""
+                rolls += [a, b]
+        # frame 10: up to 3 rolls
+        fr10 = frames[9]
+        for ch in fr10:
+            rolls.append(ch)
+        # pad to 21 throws if only 2 in 10th frame
+        while len(rolls) < 21:
+            rolls.append("")
+
+        # build detail dict
+        detail = {
+            "Date":     s["Date"],
+            "Location": s["Location"],
+            "Game":     s["Game"],
+        }
+        # assign T1…T21
+        for idx, r in enumerate(rolls, start=1):
+            frame = min((idx + 1) // 2, 10)
+            attempt = idx - frame * 2 + 2
+            detail[f"Frame{frame}-{attempt}"] = r
+
+        push_ground_truth(pd.DataFrame([detail]))        
         st.success("✅ Session saved!")
