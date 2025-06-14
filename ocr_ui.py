@@ -67,9 +67,9 @@ def compute_bowling_stats(frames):
 def get_data_editor():
     """Picks the available Streamlit editor API."""
     if hasattr(st, "data_editor"):
-        return st.data_editor(num_rows="fixed", use_container_width=True, hide_index=False)
+        return st.data_editor
     if hasattr(st, "experimental_data_editor"):
-        return st.experimental_data_editor(num_rows="fixed", use_container_width=True)
+        return st.experimental_data_editor
     return None
 
 def session_input_tab():
@@ -110,8 +110,22 @@ def session_input_tab():
         index=["Frame","Predicted","Corrected"],
         columns=cols10
     )
-    editor = get_data_editor()
-    edited = editor(df_wide)
+# Use Streamlit’s data_editor so users can modify any cell
+# and make sure the row-index (Frame/Predicted/Corrected) is not hidden
+    if hasattr(st, "data_editor"):
+        edited = st.data_editor(
+            df_wide,
+            num_rows="fixed",
+            use_container_width=True,
+            hide_index=False
+        )
+    else:
+        edited = st.experimental_data_editor(
+            df_wide,
+            num_rows="fixed",
+            use_container_width=True
+        )
+    
     # 4) Compute Totals in one row of metrics
     if st.button("Compute Totals"):
         final = edited.loc["Corrected"].tolist()
