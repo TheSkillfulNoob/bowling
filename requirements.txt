@@ -8,3 +8,4 @@ gspread-dataframe
 oauth2client
 opencv-python-headless
 pytesseract
+easyocr
