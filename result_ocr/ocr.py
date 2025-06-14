@@ -1,4 +1,5 @@
 import pytesseract
+import numpy as np
 from .preprocess import to_gray, remove_red_circles, preprocess_for_ocr
 from .deskew      import detect_skew_by_hough, rotate
 from .segment     import crop_row, split_frames
