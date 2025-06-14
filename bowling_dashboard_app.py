@@ -207,7 +207,22 @@ if len(filtered) >= 5:
                 "Predicted": pred,
                 "Corrected": pred[:]      # initialize same
             })
-            edited = st.experimental_data_editor(df_ocr, num_rows="fixed")
+            if hasattr(st, "data_editor"):
+                _editor = st.data_editor
+            elif hasattr(st, "experimental_data_editor"):
+                _editor = st.experimental_data_editor
+            else:
+                _editor = None  # no editor available
+
+            # … later in your OCR tab …
+
+            if _editor:
+                edited = _editor(df_ocr)
+            else:
+                st.warning("↪️ No editable table API available; showing static preview.")
+                st.dataframe(df_ocr)
+                edited = df_ocr
+
 
             # 4) Highlight mismatches
             def _highlight(row):
