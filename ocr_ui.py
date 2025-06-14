@@ -112,14 +112,6 @@ def session_input_tab():
     )
     editor = getattr(st, "data_editor", st.experimental_data_editor)
     edited = editor(df_wide)
-    styled = edited.style.set_properties(
-    **{"background-color": "lightblue"},
-    subset=pd.IndexSlice["Corrected", :]
-    )
-    # use st.write (or st.table), since st.dataframe(...)
-    # doesn’t fully support pandas Styler objects
-    st.write(styled, use_container_width=True)
-
     # 4) Compute Totals in one row of metrics
     if st.button("Compute Totals"):
         final = edited.loc["Corrected"].tolist()
