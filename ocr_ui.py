@@ -52,7 +52,7 @@ def session_input_tab():
     cols = st.columns(10)
     for i, f in enumerate(frames):
         with cols[i]:
-            st.image(to_gray(f), use_column_width=True, clamp=True)
+            st.image(to_gray(f), use_container_width = True, clamp = True)
             st.caption(f"F{i+1}")
 
     # ─── OCR + Editable Table ───────────────────────────────────
@@ -62,7 +62,12 @@ def session_input_tab():
         "Predicted": preds,
         "Corrected": preds[:]   # initial copy
     })
-    editor = getattr(st, "data_editor", st.experimental_data_editor)
+    if hasattr(st, "data_editor"):
+        editor = st.data_editor
+    elif hasattr(st, "experimental_data_editor"):
+        editor = st.experimental_data_editor
+    else:
+        editor = None  # no editor available
     edited = editor(df)
 
     # ─── Compute Totals ────────────────────────────────────────
