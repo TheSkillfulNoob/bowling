@@ -64,6 +64,14 @@ def compute_bowling_stats(frames):
         "Pins":     sum(rolls)
     }
 
+def get_data_editor():
+    """Picks the available Streamlit editor API."""
+    if hasattr(st, "data_editor"):
+        return st.data_editor
+    if hasattr(st, "experimental_data_editor"):
+        return st.experimental_data_editor
+    return None
+
 def session_input_tab():
     st.subheader("➕ Input with OCR Review")
 
@@ -102,7 +110,7 @@ def session_input_tab():
         index=["Frame","Predicted","Corrected"],
         columns=cols10
     )
-    editor = getattr(st, "data_editor", st.experimental_data_editor)
+    editor = get_data_editor()
     edited = editor(df_wide)
 
     # Highlight the Corrected row (after editing) in a separate display
