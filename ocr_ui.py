@@ -87,7 +87,7 @@ def session_input_tab():
     cols = st.columns(10)
     for i, f in enumerate(frames):
         with cols[i]:
-            st.image(to_gray(f), use_column_width=True, clamp=True)
+            st.image(to_gray(f), use_container_width = True, clamp = True)
             st.caption(f"F{i+1}")
 
     # 3) OCR + 3×10 editable table
