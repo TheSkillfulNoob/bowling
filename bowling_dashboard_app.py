@@ -200,7 +200,7 @@ if len(filtered) >= 5:
             # convert PIL→BGR OpenCV format
             bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
             pred = run_pipeline(bgr)
-
+            st.image(img, width=400)
             # 3) Build DataFrame & let user correct
             df_ocr = pd.DataFrame({
                 "Frame": list(range(1, 11)),
