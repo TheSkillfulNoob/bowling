@@ -10,7 +10,7 @@ st.set_page_config("🎳 Andrew's Dashboard")
 st.title("🎳 Andrew's Bowling Tracker")
 
 # Tab: add session
-tabs = st.tabs(["➕ Add Session","📈 Stats","📊 Regression"])
+tabs = st.tabs(["➕ Process Session OCR","📈 Stats","📊 Regression"])
 with tabs[0]:
     session_input_tab()
 
