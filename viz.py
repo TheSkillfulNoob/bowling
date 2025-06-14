@@ -14,9 +14,16 @@ def plot_hist_with_normal(y) -> tuple[plt.Figure, float, float]:
     mu, sigma = y.mean(), y.std()
     fig, ax1 = plt.subplots()
     counts, bins, _ = ax1.hist(y, bins=20, alpha=0.7, color="skyblue", edgecolor="black")
+    ax1.set(title="Histogram with Normal Fit", xlabel="Total Score", ylabel="Frequency")
     ax2 = ax1.twinx()
-    ax2.plot(bins, stats.norm.pdf(bins, mu, sigma), 'k--')
+    ax2.plot(
+        bins,
+        stats.norm.pdf(bins, mu, sigma),
+        'k--',
+        label=f"N({mu:.1f}, {sigma:.2f}²)"
+    )
     ax2.set_ylabel("Density")
+    ax2.legend(loc="upper right")
     return fig, mu, sigma
 
 def plot_kde(y) -> plt.Figure:
