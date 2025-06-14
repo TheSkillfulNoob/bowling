@@ -1,5 +1,5 @@
 import streamlit as st
-from ocr_ui import session_input_tab, run_ocr_and_get_frames, compute_bowling_stats
+from ocr_ui import session_input_tab, compute_bowling_stats
 from stats_ui import stats_tabs
 from regression_ui import regression_tabs
 from sheets import push_session_data, push_ground_truth
