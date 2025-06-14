@@ -125,7 +125,7 @@ def session_input_tab():
         final = edited["Corrected"].tolist()
         stats = compute_bowling_stats(final)
         stats["Date"], stats["Location"], stats["Game"] = (
-            date.strftime("%Y-%m-%d"), loc, int(game_n)
+            date.strftime("%m/%d/%Y"), loc, int(game_n)
         )
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("🏆 Total Score", f"{stats['Total']}")
