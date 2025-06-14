@@ -114,9 +114,9 @@ def session_input_tab():
     edited = editor(df_wide)
 
     # Highlight the Corrected row (after editing) in a separate display
-    styled = edited.style.apply(
-        lambda row: ["background-color: lightblue"]*10 if row.name=="Corrected" else [""*10],
-        axis=1
+    styled = edited.style.set_properties(
+        **{"background-color": "lightblue"},
+        subset=pd.IndexSlice["Corrected", :]
     )
     st.dataframe(styled, use_container_width=True)
 
