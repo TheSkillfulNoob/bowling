@@ -143,10 +143,10 @@ def session_input_tab():
             "Date":     s["Date"],
             "Location": s["Location"],
             "Game":     s["Game"],
-            "Total":    s["Total"],
-            "Pins":     s["Pins"],
+            "Spares":   s["Spares"],
             "Strikes":  s["Strikes"],
-            "Spares":   s["Spares"]
+            "Pins":     s["Pins"],
+            "Total":    s["Total"]
         }]))
         # detailed to Bowling-full
         frames = st.session_state["ocr_frames"]

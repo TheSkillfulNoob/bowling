@@ -20,9 +20,20 @@ def get_ground_truth_sheet():
     return connect_to_workbook().worksheet("Bowling-full")
 
 def push_session_data(df):
+    """
+    Appends the rows of df to the bottom of the Bowling sheet,
+    leaving the existing data intact.
+    """
     sheet = get_session_sheet()
-    set_with_dataframe(sheet, df)
+    # Convert DataFrame to list-of-lists
+    rows = df.values.tolist()
+    # Append under existing data
+    sheet.append_rows(rows, value_input_option="USER_ENTERED")
 
 def push_ground_truth(df):
+    """
+    Appends the rows of df to the bottom of the Bowling-full sheet.
+    """
     sheet = get_ground_truth_sheet()
-    set_with_dataframe(sheet, df)
+    rows = df.values.tolist()
+    sheet.append_rows(rows, value_input_option="USER_ENTERED")
