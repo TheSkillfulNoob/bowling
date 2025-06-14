@@ -68,7 +68,6 @@ def run_ocr_and_get_frames(uploaded_file) -> list[str]:
     if st.button("Submit ground truth"):
         push_ground_truth(corrected)
         st.success("✅ Updated Bowling-full sheet.")
-    corrected = preds  # <-- after user edits
     return corrected
 
 def compute_bowling_stats(frames: list[str]) -> dict:
