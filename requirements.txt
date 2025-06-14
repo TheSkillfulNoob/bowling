@@ -1,6 +1,5 @@
 streamlit
 pandas
-cv2
 matplotlib
 statsmodels
 seaborn  # for styling
