@@ -25,15 +25,7 @@ def compute_bowling_stats(frames):
                 rolls.append(10 - rolls[-1])
             else:
                 rolls.append(int(b) if b.isdigit() else 0)
-        # tenth frame can have a third roll
-        if len(fr) == 3:
-            c = fr[2]
-            if c == "X":
-                rolls.append(10)
-            elif c == "/":
-                rolls.append(10 - rolls[-1])
-            else:
-                rolls.append(int(c) if c.isdigit() else 0)
+        # third roll in F10 does NOT count total pins
 
     total_score, strikes, spares = 0, 0, 0
     for i, fr in enumerate(frames):
