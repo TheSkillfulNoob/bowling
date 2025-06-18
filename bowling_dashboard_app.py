@@ -8,7 +8,7 @@ from data import load_sessions, filter_sessions
 import pandas as pd
 
 st.set_page_config("🎳 Andrew's Dashboard")
-st.title("🎳 Andrew's Bowling Stats")
+st.title("🎳 Andrew's Bowling Tracker")
 sync_aggregates_from_full()
 # Tab: add session
 tabs = st.tabs(["➕ Process Session",
