@@ -60,11 +60,10 @@ from typing import List
 def plot_spare_bonus_distribution(
     game_strings: List[str], max_pin: int = 10
 ) -> plt.Figure:
-    # 1) get a DataFrame with one row per spare
     df = spare_transition_df(game_strings)
-    bonuses = df["bonus_throw"].fillna(0).astype(int)
+    # drop missing bonus rows
+    bonuses = df["bonus_throw"].dropna().astype(int)
 
-    # 2) bins 0…10 centered
     edges = np.arange(-0.5, max_pin + 1.5, 1)
     fig, ax = plt.subplots()
     ax.hist(bonuses, bins=edges, edgecolor="black", rwidth=0.8, align="left")
@@ -82,27 +81,27 @@ def plot_spare_bonus_distribution(
 def plot_strike_bonus_distributions(
     game_strings: List[str], max_pin: int = 10
 ) -> plt.Figure:
-    # 1) get a DataFrame with one row per strike
     df = strike_transition_df(game_strings)
-    b1 = df["bonus1"].fillna(0).astype(int)
-    b2 = df["bonus2"].fillna(0).astype(int)
+
+    # only keep strikes with both bonus1 and bonus2 measured
+    valid = df.dropna(subset=["bonus1", "bonus2"])
+    b1 = valid["bonus1"].astype(int)
+    b2 = valid["bonus2"].astype(int)
     combined = b1 + b2
 
-    # 2) build bins
-    single_edges   = np.arange(-0.5, max_pin + 1.5, 1)
-    max_comb       = combined.max() if not combined.empty else 0
-    combined_edges = np.arange(-0.5, max_comb + 1.5, 1)
+    # bins for 0…10
+    single_edges = np.arange(-0.5, max_pin + 1.5, 1)
+    # bins for combined up to max(observed)+1 
+    max_comb = int(combined.max()) if not combined.empty else 0
+    comb_edges = np.arange(-0.5, max_comb + 1.5, 1)
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4), sharey=True)
-
-    for ax, data, title, edges in zip(
-        axes,
-        [b1, b2, combined],
-        ["Strike Bonus: Next Roll",
-         "Strike Bonus: 2nd Next Roll",
-         "Combined Bonus"],
-        [single_edges, single_edges, combined_edges],
-    ):
+    specs = [
+      (b1, "Strike Bonus: Next Roll", single_edges),
+      (b2, "Strike Bonus: 2nd Next Roll", single_edges),
+      (combined, "Combined Bonus", comb_edges),
+    ]
+    for ax, (data, title, edges) in zip(axes, specs):
         ax.hist(data, bins=edges, edgecolor="black", rwidth=0.8, align="left")
         m = data.mean() if len(data)>0 else 0
         ax.axvline(m, linestyle="--", color="black", label=f"Mean={m:.2f}")
@@ -110,7 +109,6 @@ def plot_strike_bonus_distributions(
         ax.set_xticks(range(0, int(edges.max())))
         ax.set_xlabel("Pins")
         ax.legend()
-
     axes[0].set_ylabel("Frequency")
     fig.tight_layout()
     return fig

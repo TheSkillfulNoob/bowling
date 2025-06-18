@@ -112,6 +112,8 @@ def professional_tab():
         "SpareBonus": daily_spare,
         "5MA":        daily_spare.rolling(5).mean()
         })
+        
+        st.markdown("#### Daily Avg Spare Bonus + 5MA")
         st.pyplot(plot_time_series(df_ts_sp))
 
     # ── Tab 2: Strikes ─────────────────────────────
@@ -127,6 +129,8 @@ def professional_tab():
         "StrikeBonus": daily_strike,
         "5MA":         daily_strike.rolling(5).mean()
         })
+        
+        st.markdown("#### Daily Avg Strike Bonus + 5MA")
         st.pyplot(plot_time_series(df_ts_str))
 
     # — Tab 3: Game‐wise frame & cumulative scores —
