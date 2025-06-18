@@ -1,46 +1,43 @@
 import streamlit as st
 import pandas as pd
 from sheets import get_ground_truth_sheet
-from result_ocr.ocr import parse_splits_from_frames
+from result_ocr.ocr import compute_bowling_stats_from_string
+from bonus_viz import (
+    plot_spare_bonus_distribution,
+    plot_strike_bonus_distributions,
+)
+from viz import plot_hist_with_normal  # if you want overall score dists
 
 def professional_tab():
     st.subheader("🏅 Professional Analysis")
 
-    # Let user pick a session (by date & game)
-    data = pd.DataFrame(get_ground_truth_sheet().get_all_records())
-    key = st.selectbox("Choose session", data.apply(lambda r: f"{r.Date} – Game {r.Game}", axis=1))
-    row = data[data.apply(lambda r: f"{r.Date} – Game {r.Game}", axis=1) == key].iloc[0]
+    # 1) Load all games
+    df = pd.DataFrame(get_ground_truth_sheet().get_all_records())
+    if df.empty:
+        st.info("No game strings yet.")
+        return
 
-    frames = [row[f"F{i}"] for i in range(1,11)]
-    # Parse rolls and split info
-    rolls, split_info = parse_splits_from_frames(frames)
+    # 2) Show global distributions
+    games = df['Game String'].tolist()
+    st.markdown("### Spare Bonus Distribution")
+    st.pyplot(plot_spare_bonus_distribution(games))
 
-    # 1) Spare conversion rate
-    spares = [i for i,fr in enumerate(frames,1) if "/" in fr]
-    spare_success = len(spares)
-    spare_rate = spare_success / len(spares) if spares else 0.0
+    st.markdown("### Strike Bonus Distributions")
+    st.pyplot(plot_strike_bonus_distributions(games))
 
-    # 2) Strike rate
-    strikes = sum(1 for fr in frames if fr=="X")
-    strike_rate = strikes / 10
+    # 3) Show conditional P(conversion|first_throw)
+    #st.markdown("### Spare Conversion Rate by First Throw")
+    #sp_df = pd.DataFrame([
+    #    {'first': int(gs[i-1]), 'bonus': compute_bowling_stats_from_string(gs)['Pins']} 
+    #    for gs in games for i,ch in enumerate(gs) if ch=='/'
+    #])
 
-    # 3) Spare bonus avg: pins scored on roll immediately after a spare
-    bonuses = []
-    idx = 0
-    for fr in frames:
-        if "/" in fr:
-            idx += 2
-            bonuses.append(rolls[idx])
-        else:
-            idx += (1 if fr=="X" else 2)
-    spare_bonus = sum(bonuses)/len(bonuses) if bonuses else 0.0
-
-    # 4) Split & conversion: let user enter or parsed
-    splits     = st.number_input("Number of splits faced", min_value=0)
-    conversions= st.number_input("Number converted", min_value=0, max_value=splits)
-    split_rate = conversions / splits if splits else 0.0
-
-    st.metric("Spare Conversion Rate", f"{spare_rate:.0%}")
-    st.metric("Strike Rate (per frame)", f"{strike_rate:.0%}")
-    st.metric("Avg Spare Bonus", f"{spare_bonus:.1f} pins")
-    st.metric("Split Conversion Rate", f"{split_rate:.0%}")
+    # 4) Select a single session to show its raw stats
+    sel = st.selectbox("Pick a session", df.apply(lambda r: f"{r.Date} – Game {r.Game}", axis=1))
+    row = df[df.apply(lambda r: f"{r.Date} – Game {r.Game}", axis=1)==sel].iloc[0]
+    stats = compute_bowling_stats_from_string(row['Game String'])
+    c1,c2,c3,c4 = st.columns(4)
+    c1.metric("Total",    stats['Total'])
+    c2.metric("Pins",     stats['Pins'])
+    c3.metric("Strikes",  stats['Strikes'])
+    c4.metric("Spares",   stats['Spares'])
