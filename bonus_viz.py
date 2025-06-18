@@ -2,31 +2,24 @@ import re
 import pandas as pd
 
 def spare_transition_df(game_strings: list[str]) -> pd.DataFrame:
-    """
-    For each spare in each game, records:
-      - first_throw: how many pins on the first ball
-      - bonus:       pins scored on the next roll
-    Returns a DataFrame one row per spare.
-    """
     records = []
-    for gs in game_strings:
+    for game_idx, gs in enumerate(game_strings):
         rolls = []
-        # build rolls list again
         for ch in gs:
-            if ch == 'X':
-                rolls.append(10)
-            elif ch == '/':
-                rolls.append(10 - rolls[-1])
-            elif ch in '-F':
-                rolls.append(0)
-            else:
-                rolls.append(int(ch))
-        # scan for spares in string
+            if ch == "X":    rolls.append(10)
+            elif ch == "/":  rolls.append(10 - rolls[-1])
+            elif ch in "-F": rolls.append(0)
+            else:            rolls.append(int(ch))
+
         for i, ch in enumerate(gs):
-            if ch == '/':
+            if ch == "/":
                 first = rolls[i-1]
                 bonus = rolls[i+1] if i+1 < len(rolls) else None
-                records.append({"first_throw": first, "bonus_throw": bonus})
+                records.append({
+                    "GameIndex":  game_idx,
+                    "first_throw": first,
+                    "bonus_throw": bonus
+                })
     return pd.DataFrame(records)
 
 
@@ -38,7 +31,7 @@ def strike_transition_df(game_strings: list[str]) -> pd.DataFrame:
     Returns a DataFrame one row per strike.
     """
     records = []
-    for gs in game_strings:
+    for game_idx, gs in enumerate(game_strings):
         rolls = []
         for ch in gs:
             if ch == 'X':
@@ -55,7 +48,7 @@ def strike_transition_df(game_strings: list[str]) -> pd.DataFrame:
             if ch == 'X':
                 b1 = rolls[idx+1] if idx+1 < len(rolls) else None
                 b2 = rolls[idx+2] if idx+2 < len(rolls) else None
-                records.append({"bonus1": b1, "bonus2": b2})
+                records.append({"GameIndex": game_idx, "bonus1": b1, "bonus2": b2})
                 idx += 1
             else:
                 idx += 1 if ch=='X' else 2  # skip two rolls for non-strike
