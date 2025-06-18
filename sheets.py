@@ -61,7 +61,7 @@ def sync_aggregates_from_full():
     # 3) Read existing session sheet
     sess = pd.DataFrame(get_session_sheet().get_all_records())
     # Normalize date formats if needed
-    # sess['Date'] = pd.to_datetime(sess['Date'], dayfirst=True).dt.strftime('%m/%d/%Y')
+    sess['Date'] = pd.to_datetime(sess['Date'], dayfirst=True).dt.strftime('%Y/%m/%d')
     
     # 4) Find rows in full not already in sess by (Date, Location, Game)
     merged = df_full.merge(
