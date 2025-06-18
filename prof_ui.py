@@ -104,34 +104,30 @@ def professional_tab():
 
         # Build the per‐event DF, attach dates, then group by day
         sp_df = spare_transition_df(games)
-        sp_df["Date"] = full.loc[sp_df.index, "Date"].values
-        daily = sp_df.groupby("Date")["bonus_throw"].mean().rename("SpareBonus")
-        df_ts = pd.DataFrame({
-            "SpareBonus": daily,
-            "5MA":        daily.rolling(5).mean()
+        # this time we have GameIndex to line up
+        sp_df["Date"] = sp_df["GameIndex"].map(full["Date"])
+        # now group by sp_df["Date"] safely:
+        daily_spare = sp_df.groupby("Date")["bonus_throw"].mean().rename("SpareBonus")
+        df_ts_sp = pd.DataFrame({
+        "SpareBonus": daily_spare,
+        "5MA":        daily_spare.rolling(5).mean()
         })
-        st.markdown("#### Daily Avg Spare Bonus + 5MA")
-        st.pyplot(plot_time_series(df_ts))
+        st.pyplot(plot_time_series(df_ts_sp))
 
     # ── Tab 2: Strikes ─────────────────────────────
     with tab_st:
         st.markdown("#### Strike Bonus Distributions")
         st.pyplot(plot_strike_bonus_distributions(games))
-
-        df_str = strike_transition_df(games)
-        df_str["Date"] = full.loc[df_str.index, "Date"].values
-        # combined bonus series
-        combined = (df_str["bonus1"] + df_str["bonus2"]).rename("StrikeBonus")
-        daily_s = combined.groupby(full["Date"]).mean()
-        df_ts2 = pd.DataFrame({
-            "StrikeBonus": daily_s,
-            "5MA":         daily_s.rolling(5).mean()
+        
+        str_df = strike_transition_df(games)
+        str_df["Date"] = str_df["GameIndex"].map(full["Date"])
+        combined = (str_df["bonus1"] + str_df["bonus2"]).rename("StrikeBonus")
+        daily_strike = combined.groupby(str_df["Date"]).mean()
+        df_ts_str = pd.DataFrame({
+        "StrikeBonus": daily_strike,
+        "5MA":         daily_strike.rolling(5).mean()
         })
-        st.markdown("#### Daily Avg Strike Bonus + 5MA")
-        st.pyplot(plot_time_series(df_ts2))
-
-
-
+        st.pyplot(plot_time_series(df_ts_str))
 
     # — Tab 3: Game‐wise frame & cumulative scores —
     with tab_gw:
