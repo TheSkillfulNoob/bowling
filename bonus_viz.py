@@ -43,15 +43,14 @@ def strike_transition_df(game_strings: list[str]) -> pd.DataFrame:
             else:
                 rolls.append(int(ch))
         # scan for strikes
-        idx = 0
         for i, ch in enumerate(gs):
             if ch == 'X':
-                b1 = rolls[idx+1] if idx+1 < len(rolls) else None
-                b2 = rolls[idx+2] if idx+2 < len(rolls) else None
+                b1 = rolls[i+1] if i+1 < len(rolls) else None
+                b2 = rolls[i+2] if i+2 < len(rolls) else None
                 records.append({"GameIndex": game_idx, "bonus1": b1, "bonus2": b2})
-                idx += 1
+                i += 1
             else:
-                idx += 1 if ch=='X' else 2  # skip two rolls for non-strike
+                i += 1 if ch=='X' else 2  # skip two rolls for non-strike
     return pd.DataFrame(records)
 
 import matplotlib.pyplot as plt
