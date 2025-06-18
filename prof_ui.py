@@ -4,7 +4,10 @@ from result_ocr.ocr import compute_bowling_stats_from_string
 from bonus_viz import (
     plot_spare_bonus_distribution,
     plot_strike_bonus_distributions,
+    spare_transition_df,
+    strike_transition_df,
 )
+from viz import plot_time_series
 import pandas as pd
 from itertools import accumulate
 from typing import Tuple, List
@@ -82,13 +85,13 @@ def framewise_and_cumulative(gs: str) -> Tuple[List[str], List[int], List[int]]:
     return frame_strs, frame_scores, cum_scores
 
 def professional_tab():
-    df = pd.DataFrame(get_ground_truth_sheet().get_all_records())
-    if df.empty:
+    full = pd.DataFrame(get_ground_truth_sheet().get_all_records())
+    if full.empty:
         st.info("No games yet.")
         return
 
-    games = df["Game String"].tolist()
-    meta  = df[["Date","Location","Game"]].apply(
+    games = full["Game String"].tolist()
+    meta  = full[["Date","Location","Game"]].apply(
         lambda r: f"{r.Date} – {r.Location} G{r.Game}", axis=1
     )
 
@@ -99,27 +102,36 @@ def professional_tab():
         st.markdown("#### Spare Bonus Distribution")
         st.pyplot(plot_spare_bonus_distribution(games))
 
-        st.markdown("#### Spare Conversion by First Ball")
-        # you can build a DataFrame from bonus_viz.extract_spare_bonuses if you wrote it,
-        # or inline:
-        records = []
-        for gs in games:
-            for i,ch in enumerate(gs):
-                if ch == "/":
-                    first = int(gs[i-1]) if gs[i-1].isdigit() else 0
-                    # next char bonus
-                    raw_bonus = gs[i+1] if i+1 < len(gs) else "0"
-                    bonus = 10 if raw_bonus=="X" else (0 if raw_bonus in "-F" else int(raw_bonus))
-                    records.append({"first_throw": first, "bonus": bonus})
-        sp_df = pd.DataFrame(records)
-        rates = sp_df.assign(conv=lambda d: d.bonus>0) \
-                     .groupby("first_throw").conv.mean()
-        st.bar_chart(rates)
+        # Build the per‐event DF, attach dates, then group by day
+        sp_df = spare_transition_df(games)
+        sp_df["Date"] = full.loc[sp_df.index, "Date"].values
+        daily = sp_df.groupby("Date")["bonus_throw"].mean().rename("SpareBonus")
+        df_ts = pd.DataFrame({
+            "SpareBonus": daily,
+            "5MA":        daily.rolling(5).mean()
+        })
+        st.markdown("#### Daily Avg Spare Bonus + 5MA")
+        st.pyplot(plot_time_series(df_ts))
 
-    # — Tab 2: Strike analytics —
+    # ── Tab 2: Strikes ─────────────────────────────
     with tab_st:
         st.markdown("#### Strike Bonus Distributions")
         st.pyplot(plot_strike_bonus_distributions(games))
+
+        df_str = strike_transition_df(games)
+        df_str["Date"] = full.loc[df_str.index, "Date"].values
+        # combined bonus series
+        combined = (df_str["bonus1"] + df_str["bonus2"]).rename("StrikeBonus")
+        daily_s = combined.groupby(full["Date"]).mean()
+        df_ts2 = pd.DataFrame({
+            "StrikeBonus": daily_s,
+            "5MA":         daily_s.rolling(5).mean()
+        })
+        st.markdown("#### Daily Avg Strike Bonus + 5MA")
+        st.pyplot(plot_time_series(df_ts2))
+
+
+
 
     # — Tab 3: Game‐wise frame & cumulative scores —
     with tab_gw:
