@@ -108,7 +108,7 @@ def plot_strike_bonus_distributions(
         ax.axvline(m, linestyle="--", color="black", label=f"Mean={m:.2f}")
         ax.set_title(title)
         ax.set_xticks(range(0, int(edges.max())))
-        ax.set_xlim(-0.5, max_pin + 0.5)
+        ax.set_xlim(-0.5, int(edges.max()) + 0.5)
         ax.set_xlabel("Pins")
         ax.legend()
     axes[0].set_ylabel("Frequency")
