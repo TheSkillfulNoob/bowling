@@ -27,14 +27,14 @@ def stats_tabs():
     # --- Tab 1: Trends ---
     with tab_trends:
         st.subheader("Time Series Trends")
-        avg_by_date = filt.groupby("Date")[["Spare","Strike","Pins","Total"]].mean()
+        avg_by_date = filt.groupby("Date")[["Spares","Strikes","Pins","Total"]].mean()
         dates = avg_by_date.index
 
         col1, col2 = st.columns(2)
         # Left: Spare & Strike
         with col1:
             fig1, ax1 = plt.subplots()
-            avg_by_date[["Spare","Strike"]].plot(marker="o", ax=ax1)
+            avg_by_date[["Spares","Strikes"]].plot(marker="o", ax=ax1)
             ax1.set_title("Spare & Strike")
             ax1.set_ylabel("Count")
             # tidy X-ticks
@@ -79,9 +79,9 @@ def stats_tabs():
         dates = filt["Date"].drop_duplicates().sort_values(ascending=False)
         last5  = dates.head(5)
         last10 = dates.head(10)
-        overall = filt[["Spare","Strike","Pins","Total"]].mean()
-        avg5    = filt[filt["Date"].isin(last5)][["Spare","Strike","Pins","Total"]].mean()
-        avg10   = filt[filt["Date"].isin(last10)][["Spare","Strike","Pins","Total"]].mean()
+        overall = filt[["Spares","Strikes","Pins","Total"]].mean()
+        avg5    = filt[filt["Date"].isin(last5)][["Spares","Strikes","Pins","Total"]].mean()
+        avg10   = filt[filt["Date"].isin(last10)][["Spares","Strikes","Pins","Total"]].mean()
 
         def fmt(s): return s.round(2)
         df_ma = pd.DataFrame({
@@ -91,7 +91,7 @@ def stats_tabs():
         })
         # Add trend emojis comparing 5MA vs 10MA
         df_ma["Trend"] = [
-            comparison_emoji(avg10[c], avg5[c]) for c in ["Spare","Strike","Pins","Total"]
+            comparison_emoji(avg10[c], avg5[c]) for c in ["Spares","Strikes","Pins","Total"]
         ]
         st.table(df_ma)
 
@@ -100,7 +100,7 @@ def stats_tabs():
         st.subheader("Personal Bests")
         pb = []
         for metric, max_possible in zip(
-            ["Spare","Strike","Pins","Total"], [10,12,100,300]
+            ["Spares","Strikes","Pins","Total"], [10,12,100,300]
         ):
             best_val  = df[metric].max()
             best_date = df[df[metric]==best_val]["Date"].iloc[0].strftime("%d/%m/%Y")
