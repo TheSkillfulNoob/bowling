@@ -83,16 +83,15 @@ def stats_tabs():
         avg5    = filt[filt["Date"].isin(last5)][["Spares","Strikes","Pins","Total"]].mean()
         avg10   = filt[filt["Date"].isin(last10)][["Spares","Strikes","Pins","Total"]].mean()
 
-        def fmt(s): return s.round(2)
+        # Dataframe creation and table
+        metrics = ["Spares","Strikes","Pins","Total"]
         df_ma = pd.DataFrame({
-            "Overall": format_avg(overall),
-            "5MA":     fmt(avg5),
-            "10MA":    fmt(avg10)
-        })
-        # Add trend emojis comparing 5MA vs 10MA
-        df_ma["Trend"] = [
-            comparison_emoji(avg10[c], avg5[c]) for c in ["Spares","Strikes","Pins","Total"]
-        ]
+            "Overall": [ overall[m] for m in metrics ],
+            "5MA":     [ avg5[m]     for m in metrics ].round(2),
+            "10MA":    [ avg10[m]    for m in metrics ].round(2),
+            "Trend":   [ comparison_emoji(avg10[m], avg5[m]) for m in metrics ]
+        }, index=metrics)
+
         st.table(df_ma)
 
     # --- Tab 4: Personal Bests ---
