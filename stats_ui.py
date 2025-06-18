@@ -87,8 +87,8 @@ def stats_tabs():
         metrics = ["Spares","Strikes","Pins","Total"]
         df_ma = pd.DataFrame({
             "Overall": [ overall[m] for m in metrics ],
-            "5MA":     [ avg5[m]     for m in metrics ].round(2),
-            "10MA":    [ avg10[m]    for m in metrics ].round(2),
+            "5MA":     [ avg5[m].round(2)     for m in metrics],
+            "10MA":    [ avg10[m].round(2)    for m in metrics],
             "Trend":   [ comparison_emoji(avg10[m], avg5[m]) for m in metrics ]
         }, index=metrics)
 
