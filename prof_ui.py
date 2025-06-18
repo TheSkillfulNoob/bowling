@@ -134,3 +134,9 @@ def professional_tab():
         )
         df_fw.columns = [f"F{i}" for i in range(1,11)]
         st.table(df_fw)
+        stats = compute_bowling_stats_from_string(gs)
+        c1,c2,c3,c4 = st.columns(4)
+        c1.metric("Total",    stats['Total'])
+        c2.metric("Pins",     stats['Pins'])
+        c3.metric("Strikes",  stats['Strikes'])
+        c4.metric("Spares",   stats['Spares'])
