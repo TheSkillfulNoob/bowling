@@ -130,6 +130,13 @@ def professional_tab():
         "5MA":         daily_strike.rolling(5).mean()
         })
         
+        # Debug plots
+        str_df["combined"] = str_df["bonus1"] + str_df["bonus2"]
+        if st.checkbox("🔍 Show raw strike bonus pairs"):
+            st.dataframe(
+                str_df[["GameIndex","bonus1","bonus2","combined"]]
+            )
+        
         st.markdown("#### Daily Avg Strike Bonus + 5MA")
         st.pyplot(plot_time_series(df_ts_str))
 
