@@ -16,7 +16,7 @@ def regression_tabs():
     with tab1:
         st.pyplot(plot_residuals(filt['Pins'], filt['Total'], 'Pins','blue'))
     with tab2:
-        X = sm.add_constant(filt[['Spare','Strike','Pins']])
+        X = sm.add_constant(filt[['Spares','Strikes','Pins']])
         y = filt['Total']
         model = sm.OLS(y, X).fit()
         st.text(model.summary())
