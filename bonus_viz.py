@@ -64,12 +64,13 @@ def plot_spare_bonus_distribution(
     # drop missing bonus rows
     bonuses = df["bonus_throw"].dropna().astype(int)
 
-    edges = np.arange(-0.5, max_pin + 1.5, 1)
+    edges = np.arange(-0.5, max_pin + 0.5 + 1e-6, 1)
     fig, ax = plt.subplots()
-    ax.hist(bonuses, bins=edges, edgecolor="black", rwidth=0.8, align="left")
+    ax.hist(bonuses, bins=edges, edgecolor="black", rwidth=0.8, align="mid")
     mean_b = bonuses.mean() if not bonuses.empty else 0
     ax.axvline(mean_b, linestyle="--", color="black", label=f"Mean={mean_b:.2f}")
     ax.set_xticks(range(0, max_pin + 1))
+    ax.set_xlim(-0.5, max_pin + 0.5)
     ax.set_title("Spare Bonus Distribution")
     ax.set_xlabel("Pins on Next Roll After Spare")
     ax.set_ylabel("Frequency")
@@ -90,10 +91,10 @@ def plot_strike_bonus_distributions(
     combined = b1 + b2
 
     # bins for 0…10
-    single_edges = np.arange(-0.5, max_pin + 1.5, 1)
+    single_edges = np.arange(-0.5, max_pin + 0.5 + 1e-6, 1)
     # bins for combined up to max(observed)+1 
     max_comb = int(combined.max()) if not combined.empty else 0
-    comb_edges = np.arange(-0.5, max_comb + 1.5, 1)
+    comb_edges = np.arange(-0.5, max_comb + 0.5 + 1e-6, 1)
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4), sharey=True)
     specs = [
@@ -102,11 +103,12 @@ def plot_strike_bonus_distributions(
       (combined, "Combined Bonus", comb_edges),
     ]
     for ax, (data, title, edges) in zip(axes, specs):
-        ax.hist(data, bins=edges, edgecolor="black", rwidth=0.8, align="left")
+        ax.hist(data, bins=edges, edgecolor="black", rwidth=0.8, align="mid")
         m = data.mean() if len(data)>0 else 0
         ax.axvline(m, linestyle="--", color="black", label=f"Mean={m:.2f}")
         ax.set_title(title)
         ax.set_xticks(range(0, int(edges.max())))
+        ax.set_xlim(-0.5, max_pin + 0.5)
         ax.set_xlabel("Pins")
         ax.legend()
     axes[0].set_ylabel("Frequency")
