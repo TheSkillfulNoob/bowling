@@ -134,7 +134,7 @@ def professional_tab():
         str_df["combined"] = str_df["bonus1"] + str_df["bonus2"]
         if st.checkbox("🔍 Show raw strike bonus pairs"):
             st.dataframe(
-                str_df[["GameIndex","bonus1","bonus2","combined"]]
+                str_df[["GameIndex","bonus1","bonus2","combined"]].dropna(inplace = True)
             )
         
         st.markdown("#### Daily Avg Strike Bonus + 5MA")
