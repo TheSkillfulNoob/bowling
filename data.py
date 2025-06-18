@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 from sheets import get_session_sheet
 
-@st.cache_data(show_spinner=False)
+#@st.cache_data(show_spinner=False)
 def load_sessions() -> pd.DataFrame:
     records = get_session_sheet().get_all_records()
     df = pd.DataFrame(records)

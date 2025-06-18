@@ -1,43 +1,97 @@
 import streamlit as st
-import pandas as pd
 from sheets import get_ground_truth_sheet
 from result_ocr.ocr import compute_bowling_stats_from_string
 from bonus_viz import (
     plot_spare_bonus_distribution,
     plot_strike_bonus_distributions,
 )
-from viz import plot_hist_with_normal  # if you want overall score dists
+from typing import Tuple
+import pandas as pd
+import numpy as np
+from itertools import accumulate
+
+def framewise_and_cumulative(gs: str) -> Tuple[list[int], list[int]]:
+    # Build roll list
+    rolls = []
+    for ch in gs:
+        if ch == "X": rolls.append(10)
+        elif ch == "/": rolls.append(10 - rolls[-1])
+        elif ch in "-F": rolls.append(0)
+        else: rolls.append(int(ch))
+
+    frame_scores = []
+    idx = 0
+    # 10 frames
+    for _ in range(10):
+        if rolls[idx] == 10:
+            # strike
+            score = 10
+            bonus1 = rolls[idx+1] if idx+1 < len(rolls) else 0
+            bonus2 = rolls[idx+2] if idx+2 < len(rolls) else 0
+            frame_scores.append(score + bonus1 + bonus2)
+            idx += 1
+        else:
+            first, second = rolls[idx], (rolls[idx+1] if idx+1 < len(rolls) else 0)
+            if first + second == 10:
+                # spare
+                bonus = rolls[idx+2] if idx+2 < len(rolls) else 0
+                frame_scores.append(10 + bonus)
+            else:
+                frame_scores.append(first + second)
+            idx += 2
+
+    cum_scores = list(accumulate(frame_scores))
+    return frame_scores, cum_scores
+
 
 def professional_tab():
     st.subheader("🏅 Professional Analysis")
-
-    # 1) Load all games
     df = pd.DataFrame(get_ground_truth_sheet().get_all_records())
     if df.empty:
-        st.info("No game strings yet.")
+        st.info("No games yet.")
         return
 
-    # 2) Show global distributions
-    games = df['Game String'].tolist()
-    st.markdown("### Spare Bonus Distribution")
-    st.pyplot(plot_spare_bonus_distribution(games))
+    games = df["Game String"].tolist()
+    meta  = df[["Date","Location","Game"]].apply(
+        lambda r: f"{r.Date} – {r.Location} G{r.Game}", axis=1
+    )
 
-    st.markdown("### Strike Bonus Distributions")
-    st.pyplot(plot_strike_bonus_distributions(games))
+    tab_sp, tab_st, tab_gw = st.tabs(["Spares","Strikes","Game Stats"])
 
-    # 3) Show conditional P(conversion|first_throw)
-    #st.markdown("### Spare Conversion Rate by First Throw")
-    #sp_df = pd.DataFrame([
-    #    {'first': int(gs[i-1]), 'bonus': compute_bowling_stats_from_string(gs)['Pins']} 
-    #    for gs in games for i,ch in enumerate(gs) if ch=='/'
-    #])
+    # — Tab 1: Spare analytics —
+    with tab_sp:
+        st.markdown("#### Spare Bonus Distribution")
+        st.pyplot(plot_spare_bonus_distribution(games))
 
-    # 4) Select a single session to show its raw stats
-    sel = st.selectbox("Pick a session", df.apply(lambda r: f"{r.Date} – Game {r.Game}", axis=1))
-    row = df[df.apply(lambda r: f"{r.Date} – Game {r.Game}", axis=1)==sel].iloc[0]
-    stats = compute_bowling_stats_from_string(row['Game String'])
-    c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Total",    stats['Total'])
-    c2.metric("Pins",     stats['Pins'])
-    c3.metric("Strikes",  stats['Strikes'])
-    c4.metric("Spares",   stats['Spares'])
+        st.markdown("#### Spare Conversion by First Ball")
+        # you can build a DataFrame from bonus_viz.extract_spare_bonuses if you wrote it,
+        # or inline:
+        records = []
+        for gs in games:
+            for i,ch in enumerate(gs):
+                if ch == "/":
+                    first = int(gs[i-1]) if gs[i-1].isdigit() else 0
+                    # next char bonus
+                    raw_bonus = gs[i+1] if i+1 < len(gs) else "0"
+                    bonus = 10 if raw_bonus=="X" else (0 if raw_bonus in "-F" else int(raw_bonus))
+                    records.append({"first_throw": first, "bonus": bonus})
+        sp_df = pd.DataFrame(records)
+        rates = sp_df.assign(conv=lambda d: d.bonus>0) \
+                     .groupby("first_throw").conv.mean()
+        st.bar_chart(rates)
+
+    # — Tab 2: Strike analytics —
+    with tab_st:
+        st.markdown("#### Strike Bonus Distributions")
+        st.pyplot(plot_strike_bonus_distributions(games))
+
+    # — Tab 3: Game‐wise frame & cumulative scores —
+    with tab_gw:
+        sel = st.selectbox("Pick session", meta)
+        idx = meta.tolist().index(sel)
+        gs  = games[idx]
+        fs, cs = framewise_and_cumulative(gs)
+        df_fw = pd.DataFrame([fs, cs], index=["Frame Score","Cumulative"])
+        # label columns F1…F10
+        df_fw.columns = [f"F{i}" for i in range(1,11)]
+        st.table(df_fw)
