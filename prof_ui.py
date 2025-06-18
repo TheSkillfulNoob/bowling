@@ -5,47 +5,83 @@ from bonus_viz import (
     plot_spare_bonus_distribution,
     plot_strike_bonus_distributions,
 )
-from typing import Tuple
 import pandas as pd
-import numpy as np
 from itertools import accumulate
+from typing import Tuple, List
 
-def framewise_and_cumulative(gs: str) -> Tuple[list[int], list[int]]:
-    # Build roll list
+def framewise_and_cumulative(gs: str) -> Tuple[List[str], List[int], List[int]]:
+    """
+    Returns (frame_strs, frame_scores, cumulative_scores) for a 10‐frame game string.
+    Frame 10 is the rest of the string.
+    """
+    # build numeric rolls[]
     rolls = []
     for ch in gs:
-        if ch == "X": rolls.append(10)
-        elif ch == "/": rolls.append(10 - rolls[-1])
-        elif ch in "-F": rolls.append(0)
-        else: rolls.append(int(ch))
-
-    frame_scores = []
-    idx = 0
-    # 10 frames
-    for _ in range(10):
-        if rolls[idx] == 10:
-            # strike
-            score = 10
-            bonus1 = rolls[idx+1] if idx+1 < len(rolls) else 0
-            bonus2 = rolls[idx+2] if idx+2 < len(rolls) else 0
-            frame_scores.append(score + bonus1 + bonus2)
-            idx += 1
+        if ch == "X":
+            rolls.append(10)
+        elif ch == "/":
+            rolls.append(10 - rolls[-1])
+        elif ch in "-F":
+            rolls.append(0)
         else:
-            first, second = rolls[idx], (rolls[idx+1] if idx+1 < len(rolls) else 0)
-            if first + second == 10:
-                # spare
-                bonus = rolls[idx+2] if idx+2 < len(rolls) else 0
-                frame_scores.append(10 + bonus)
+            rolls.append(int(ch))
+
+    frame_strs   = []
+    frame_scores = []
+    i = 0  # pointer into the string gs
+    r = 0  # pointer into rolls[]
+
+    for frame in range(1, 11):
+        if frame < 10:
+            # frames 1–9
+            if rolls[r] == 10:
+                # strike
+                seg = "X"
+                score = 10
+                # bonus
+                score += rolls[r+1] if r+1 < len(rolls) else 0
+                score += rolls[r+2] if r+2 < len(rolls) else 0
+                frame_strs.append(seg)
+                frame_scores.append(score)
+                i += 1
+                r += 1
             else:
-                frame_scores.append(first + second)
-            idx += 2
+                # two-ball (or spare)
+                seg = gs[i:i+2]
+                first  = rolls[r]
+                second = rolls[r+1] if r+1 < len(rolls) else 0
+                if first + second == 10:
+                    # spare
+                    score = 10 + (rolls[r+2] if r+2 < len(rolls) else 0)
+                else:
+                    score = first + second
+                frame_strs.append(seg)
+                frame_scores.append(score)
+                i += 2
+                r += 2
+        else:
+            # frame 10: everything left
+            seg = gs[i:]
+            # turn seg into numeric list
+            vals = []
+            for ch in seg:
+                if ch == "X":
+                    vals.append(10)
+                elif ch == "/":
+                    vals.append(10 - vals[-1])
+                elif ch in "-F":
+                    vals.append(0)
+                else:
+                    vals.append(int(ch))
+            score = sum(vals)
+            frame_strs.append(seg)
+            frame_scores.append(score)
+            break
 
     cum_scores = list(accumulate(frame_scores))
-    return frame_scores, cum_scores
-
+    return frame_strs, frame_scores, cum_scores
 
 def professional_tab():
-    st.subheader("🏅 Professional Analysis")
     df = pd.DataFrame(get_ground_truth_sheet().get_all_records())
     if df.empty:
         st.info("No games yet.")
@@ -56,7 +92,7 @@ def professional_tab():
         lambda r: f"{r.Date} – {r.Location} G{r.Game}", axis=1
     )
 
-    tab_sp, tab_st, tab_gw = st.tabs(["Spares","Strikes","Game Stats"])
+    tab_sp, tab_st, tab_gw = st.tabs(["📍 Spares","❌ Strikes","📊 Game Stats"])
 
     # — Tab 1: Spare analytics —
     with tab_sp:
@@ -90,8 +126,11 @@ def professional_tab():
         sel = st.selectbox("Pick session", meta)
         idx = meta.tolist().index(sel)
         gs  = games[idx]
-        fs, cs = framewise_and_cumulative(gs)
-        df_fw = pd.DataFrame([fs, cs], index=["Frame Score","Cumulative"])
-        # label columns F1…F10
+        strs, fs, cs = framewise_and_cumulative(gs)
+
+        df_fw = pd.DataFrame(
+            [strs, fs, cs],
+            index=["Rolls", "Frame Score", "Cumulative"]
+        )
         df_fw.columns = [f"F{i}" for i in range(1,11)]
         st.table(df_fw)
