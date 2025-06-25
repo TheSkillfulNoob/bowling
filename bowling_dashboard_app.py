@@ -1,7 +1,7 @@
 import streamlit as st
 from ocr_ui import session_input_tab, compute_bowling_stats
 from stats_ui import stats_tabs
-from regression_ui import regression_tabs
+# from regression_ui import regression_tabs
 from prof_ui import professional_tab
 from sheets import push_session_data, push_ground_truth, sync_aggregates_from_full
 from data import load_sessions, filter_sessions
