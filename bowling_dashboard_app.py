@@ -13,7 +13,7 @@ sync_aggregates_from_full()
 # Tab: add session
 tabs = st.tabs(["➕ Process Session",
                 "📈 Stats",
-                "📊 Regression", 
+                # "📊 Regression", 
                 "🏅 Professional"
                 ])
 with tabs[0]:
@@ -22,8 +22,8 @@ with tabs[0]:
 with tabs[1]:
     stats_tabs()
 
-with tabs[2]:
-    regression_tabs()
+#with tabs[2]:
+#    regression_tabs()
 
-with tabs[3]:
+with tabs[2]:
     professional_tab()
